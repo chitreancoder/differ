@@ -1,7 +1,8 @@
-import { forwardRef, useImperativeHandle, useRef } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import type { FileEntry, DiffStyle } from "../types";
 import { FileDiff } from "./FileDiff";
 import { fileAnchorId } from "../utils/diff";
+import { LoadObserver, VisibilityObserver } from "./intersection";
 
 type Props = {
   files: FileEntry[];
@@ -29,7 +30,7 @@ export const DiffPane = forwardRef<DiffPaneHandle, Props>(function DiffPane(
   },
   ref,
 ) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
 
   useImperativeHandle(
     ref,
@@ -43,19 +44,31 @@ export const DiffPane = forwardRef<DiffPaneHandle, Props>(function DiffPane(
   );
 
   return (
-    <div ref={scrollRef} className="diff-list">
-      {files.map((file) => (
-        <FileDiff
-          key={file.path}
-          file={file}
-          repoPath={repoPath}
-          base={base}
-          compare={compare}
-          selectedCommit={selectedCommit}
-          diffStyle={diffStyle}
-          onVisible={onVisibleFileChange}
-        />
-      ))}
+    <div ref={setScrollEl} className="diff-list">
+      {scrollEl && (
+        <LoadObserver.Provider
+          root={scrollEl}
+          options={{ rootMargin: "300px 0px" }}
+        >
+          <VisibilityObserver.Provider
+            root={scrollEl}
+            options={{ rootMargin: "0px 0px -70% 0px", threshold: 0 }}
+          >
+            {files.map((file) => (
+              <FileDiff
+                key={file.path}
+                file={file}
+                repoPath={repoPath}
+                base={base}
+                compare={compare}
+                selectedCommit={selectedCommit}
+                diffStyle={diffStyle}
+                onVisible={onVisibleFileChange}
+              />
+            ))}
+          </VisibilityObserver.Provider>
+        </LoadObserver.Provider>
+      )}
     </div>
   );
 });

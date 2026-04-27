@@ -45,7 +45,7 @@ function statusGlyph(status: FileStatus): {
     case "unmerged":
       return { letter: "U", className: "deleted", title: "Unmerged" };
     case "unknown":
-      return { letter: "?", className: "muted", title: "Unknown" };
+      return { letter: "?", className: "unknown", title: "Unknown" };
   }
 }
 

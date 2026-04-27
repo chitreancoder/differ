@@ -8,6 +8,7 @@ import { getHighlighter } from "../state/highlighter";
 import { useSystemTheme } from "../theme";
 import { fileAnchorId, isTooLarge, langFromPath } from "../utils/diff";
 import { DiffViewBoundary } from "./DiffViewBoundary";
+import { LoadObserver, VisibilityObserver } from "./intersection";
 
 type Props = {
   file: FileEntry;
@@ -79,28 +80,23 @@ export function FileDiff({
     shouldFetch,
   );
 
+  const loadObs = LoadObserver.useObserver();
+  const visObs = VisibilityObserver.useObserver();
+
   useEffect(() => {
     const el = containerRef.current;
-    if (!el) return;
-    const loadObserver = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setInViewport(true);
-      },
-      { rootMargin: "300px 0px" },
-    );
-    loadObserver.observe(el);
-    const visibilityObserver = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) onVisible(file.path);
-      },
-      { rootMargin: "0px 0px -70% 0px", threshold: 0 },
-    );
-    visibilityObserver.observe(el);
+    if (!el || !loadObs || !visObs) return;
+    const offLoad = loadObs.observe(el, (intersecting) => {
+      if (intersecting) setInViewport(true);
+    });
+    const offVis = visObs.observe(el, (intersecting) => {
+      if (intersecting) onVisible(file.path);
+    });
     return () => {
-      loadObserver.disconnect();
-      visibilityObserver.disconnect();
+      offLoad();
+      offVis();
     };
-  }, [file.path, onVisible]);
+  }, [file.path, onVisible, loadObs, visObs]);
 
   const hasHunks = diffText !== null && diffText.includes("\n@@");
   const lang = langFromPath(file.path);
