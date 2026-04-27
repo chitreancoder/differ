@@ -166,6 +166,7 @@ pub async fn diff_commit_name_status(
         &path,
         &[
             "diff-tree",
+            "-r",
             "--root",
             "--no-commit-id",
             "--name-status",
@@ -179,6 +180,7 @@ pub async fn diff_commit_name_status(
         &path,
         &[
             "diff-tree",
+            "-r",
             "--root",
             "--no-commit-id",
             "--numstat",
@@ -208,6 +210,7 @@ pub async fn diff_commit_file(
         &path,
         &[
             "diff-tree",
+            "-r",
             "--root",
             "--no-commit-id",
             "-p",
