@@ -43,7 +43,3 @@ export function autoFetchOnce(repoPath: string) {
   if (inFlight.has(repoPath)) return;
   fetchRemote(repoPath);
 }
-
-export function clearFetchSessionCache() {
-  fetchedThisSession.clear();
-}

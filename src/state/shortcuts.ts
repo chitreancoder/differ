@@ -22,7 +22,9 @@ export function useShortcuts() {
       const meta = e.metaKey || e.ctrlKey;
       const store = useStore.getState();
 
-      if (meta && e.key === "k") {
+      const lower = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+
+      if (meta && lower === "k") {
         e.preventDefault();
         store.togglePalette();
         return;
@@ -36,13 +38,13 @@ export function useShortcuts() {
         return;
       }
 
-      if (meta && e.key.toLowerCase() === "l") {
+      if (meta && lower === "l") {
         e.preventDefault();
         store.toggleDiffStyle();
         return;
       }
 
-      if (meta && e.key.toLowerCase() === "r") {
+      if (meta && lower === "r") {
         e.preventDefault();
         if (store.activeRepoPath) {
           fetchRemote(store.activeRepoPath);
@@ -62,18 +64,20 @@ export function useShortcuts() {
         return;
       }
 
-      if (!meta && !e.altKey && (e.key === "j" || e.key === "k")) {
+      if (!meta && !e.altKey && (lower === "j" || lower === "k")) {
         if (isTypingTarget(e.target)) return;
         const files = store.currentFiles;
         if (files.length === 0) return;
         const current = store.currentFilePath;
         const idx = current ? files.findIndex((f) => f.path === current) : -1;
-        let next: number;
-        if (e.key === "j") {
-          next = idx < 0 ? 0 : Math.min(files.length - 1, idx + 1);
-        } else {
-          next = idx < 0 ? 0 : Math.max(0, idx - 1);
-        }
+        const next =
+          lower === "j"
+            ? idx < 0
+              ? 0
+              : Math.min(files.length - 1, idx + 1)
+            : idx < 0
+              ? 0
+              : Math.max(0, idx - 1);
         const path = files[next].path;
         e.preventDefault();
         store.setCurrentFilePath(path);

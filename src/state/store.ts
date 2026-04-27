@@ -23,7 +23,6 @@ type Actions = {
   hydrate: (data: Partial<State>) => void;
   addRepo: (repo: Repo) => void;
   removeRepo: (path: string) => void;
-  updateRepo: (path: string, patch: Partial<Repo>) => void;
   setActiveRepo: (path: string | null) => void;
   toggleSidebar: () => void;
   setDiffStyle: (style: DiffStyle) => void;
@@ -66,8 +65,11 @@ export const useStore = create<State & Actions>((set) => ({
 
   addRepo: (repo) =>
     set((s) => {
-      if (s.repos.some((r) => r.path === repo.path)) {
-        return { activeRepoPath: repo.path };
+      const existing = s.repos.findIndex((r) => r.path === repo.path);
+      if (existing >= 0) {
+        const repos = s.repos.slice();
+        repos[existing] = { ...repos[existing], ...repo };
+        return { repos, activeRepoPath: repo.path };
       }
       return { repos: [...s.repos, repo], activeRepoPath: repo.path };
     }),
@@ -81,10 +83,6 @@ export const useStore = create<State & Actions>((set) => ({
       const { [path]: _s, ...selectedCommit } = s.selectedCommit;
       return { repos, activeRepoPath, base, compare, selectedCommit };
     }),
-  updateRepo: (path, patch) =>
-    set((s) => ({
-      repos: s.repos.map((r) => (r.path === path ? { ...r, ...patch } : r)),
-    })),
   setActiveRepo: (path) => set({ activeRepoPath: path, currentFilePath: null }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setDiffStyle: (style) => set({ diffStyle: style }),
