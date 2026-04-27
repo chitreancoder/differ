@@ -28,7 +28,7 @@ function useAutoFetchOnRepoSwitch() {
 function useFocusRefresh() {
   useEffect(() => {
     let unlisten: (() => void) | null = null;
-    let lastBlurAt = 0;
+    let lastBlurAt = Date.now();
     (async () => {
       unlisten = await getCurrentWindow().onFocusChanged((event) => {
         if (!event.payload) {

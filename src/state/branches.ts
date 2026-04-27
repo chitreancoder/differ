@@ -8,25 +8,11 @@ const cache = new Map<string, Branch[]>();
 export function useBranches(repoPath: string | null): {
   branches: Branch[];
   loading: boolean;
-  reload: () => Promise<void>;
 } {
   const [branches, setBranches] = useState<Branch[]>(() =>
     repoPath ? (cache.get(repoPath) ?? []) : [],
   );
   const [loading, setLoading] = useState(false);
-
-  const fetchBranches = async (path: string) => {
-    setLoading(true);
-    try {
-      const list = await invoke<Branch[]>("list_branches", { path });
-      cache.set(path, list);
-      setBranches(list);
-    } catch (err) {
-      useStore.getState().pushToast(`Failed to list branches: ${err}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!repoPath) {
@@ -35,14 +21,28 @@ export function useBranches(repoPath: string | null): {
     }
     const cached = cache.get(repoPath);
     if (cached) setBranches(cached);
-    fetchBranches(repoPath);
+    let cancelled = false;
+    setLoading(true);
+    invoke<Branch[]>("list_branches", { path: repoPath })
+      .then((list) => {
+        if (cancelled) return;
+        cache.set(repoPath, list);
+        setBranches(list);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        useStore.getState().pushToast(`Failed to list branches: ${err}`);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [repoPath]);
 
-  return {
-    branches,
-    loading,
-    reload: () => (repoPath ? fetchBranches(repoPath) : Promise.resolve()),
-  };
+  return { branches, loading };
 }
 
 export function clearBranchCache(repoPath?: string) {

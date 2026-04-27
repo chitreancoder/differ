@@ -1,27 +1,6 @@
 import type { FileEntry } from "../types";
 
-const LOCK_PATTERNS = [
-  /(^|\/)package-lock\.json$/,
-  /(^|\/)yarn\.lock$/,
-  /(^|\/)pnpm-lock\.yaml$/,
-  /(^|\/)Cargo\.lock$/,
-  /(^|\/)Gemfile\.lock$/,
-  /(^|\/)poetry\.lock$/,
-  /(^|\/)composer\.lock$/,
-  /(^|\/)go\.sum$/,
-  /\.lock$/,
-  /\.min\.js$/,
-  /\.min\.css$/,
-  /\.map$/,
-];
-
-const COLLAPSE_LINE_THRESHOLD = 5000;
 const REFUSE_LINE_THRESHOLD = 50000;
-
-export function shouldCollapseByDefault(file: FileEntry): boolean {
-  if (LOCK_PATTERNS.some((re) => re.test(file.path))) return true;
-  return file.additions + file.deletions > COLLAPSE_LINE_THRESHOLD;
-}
 
 export function isTooLarge(file: FileEntry): boolean {
   return file.additions + file.deletions > REFUSE_LINE_THRESHOLD;
