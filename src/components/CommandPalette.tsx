@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Command } from "cmdk";
 import { useStore } from "../state/store";
-import { refreshAll } from "../state/refresh";
+import { fetchRemote, refreshAll } from "../state/refresh";
 import { fileAnchorId } from "../utils/diff";
 import { pickAndAddRepo } from "../state/repoActions";
 
@@ -80,11 +80,13 @@ export function CommandPalette() {
                   </Command.Item>
                   <Command.Item
                     onSelect={() => {
-                      refreshAll();
+                      if (activeRepoPath) fetchRemote(activeRepoPath);
+                      else refreshAll();
                       close();
                     }}
                   >
-                    Refresh <span className="palette-shortcut">⌘R</span>
+                    Fetch &amp; refresh{" "}
+                    <span className="palette-shortcut">⌘R</span>
                   </Command.Item>
                 </>
               )}

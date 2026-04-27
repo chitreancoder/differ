@@ -194,6 +194,21 @@ button:disabled {
   color: var(--fg);
 }
 
+.refresh-btn {
+  font-size: 16px;
+}
+
+.refresh-btn.spinning {
+  animation: spin 0.8s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .branch-slots {
   display: flex;
   align-items: center;
@@ -347,7 +362,7 @@ button:disabled {
 .empty-card {
   padding: 32px;
   text-align: center;
-  max-width: 360px;
+  max-width: 420px;
 }
 
 .empty-card h2 {
@@ -359,6 +374,54 @@ button:disabled {
 .empty-card p {
   margin: 0 0 8px;
   font-size: 13px;
+}
+
+.empty-card .hint {
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+.empty-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+kbd {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  background: var(--bg-elevated);
 }
 
 /* Sidebar repo row interactions */

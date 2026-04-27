@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useStore } from "./store";
-import { refreshAll } from "./refresh";
+import { fetchRemote, refreshAll } from "./refresh";
 import { fileAnchorId } from "../utils/diff";
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -44,7 +44,11 @@ export function useShortcuts() {
 
       if (meta && e.key.toLowerCase() === "r") {
         e.preventDefault();
-        refreshAll();
+        if (store.activeRepoPath) {
+          fetchRemote(store.activeRepoPath);
+        } else {
+          refreshAll();
+        }
         return;
       }
 

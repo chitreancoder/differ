@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useStore } from "../state/store";
 import { useDiffFiles } from "../state/diff";
+import { fetchRemote, refreshAll } from "../state/refresh";
 import { FileTree } from "./FileTree";
 import { DiffPane, type DiffPaneHandle } from "./DiffPane";
 
@@ -43,7 +44,13 @@ export function MainPane() {
       <main className="main-pane empty">
         <div className="empty-card">
           <h2>Welcome to Differ</h2>
-          <p className="muted">Add a repository to start comparing branches.</p>
+          <p className="muted">
+            Add a repository to start comparing branches.
+          </p>
+          <p className="muted hint">
+            Tip: drop a folder anywhere in this window, or press{" "}
+            <kbd>⌘K</kbd> for the command palette.
+          </p>
         </div>
       </main>
     );
@@ -59,11 +66,30 @@ export function MainPane() {
     );
   }
 
+  const activeRepo = repos.find((r) => r.path === activeRepoPath);
+  if (activeRepo?.missing) {
+    return (
+      <main className="main-pane empty">
+        <div className="empty-card">
+          <h2>Repository unavailable</h2>
+          <p className="muted">
+            <code>{activeRepoPath}</code> can&apos;t be opened. It may have been
+            moved or deleted.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   if (!base || !compare) {
     return (
       <main className="main-pane empty">
         <div className="empty-card">
-          <p className="muted">Pick base &amp; compare branches above.</p>
+          <h2>Pick branches</h2>
+          <p className="muted">
+            Choose a <strong>base</strong> and <strong>compare</strong> branch
+            in the top bar to view the cumulative diff.
+          </p>
         </div>
       </main>
     );
@@ -85,11 +111,30 @@ export function MainPane() {
       <div className="diff-pane">
         {error ? (
           <div className="empty-card">
+            <h2>Diff failed</h2>
             <p className="muted">{error}</p>
+            <div className="empty-actions">
+              <button
+                className="btn-primary"
+                onClick={() => fetchRemote(activeRepoPath)}
+              >
+                Fetch &amp; retry
+              </button>
+              <button className="btn-secondary" onClick={() => refreshAll()}>
+                Retry without fetch
+              </button>
+            </div>
+          </div>
+        ) : loading && files.length === 0 ? (
+          <div className="empty-card">
+            <p className="muted">Loading diff…</p>
           </div>
         ) : !loading && files.length === 0 ? (
           <div className="empty-card">
-            <p className="muted">These branches are identical.</p>
+            <h2>No changes</h2>
+            <p className="muted">
+              <code>{base}</code> and <code>{compare}</code> are identical.
+            </p>
           </div>
         ) : (
           <DiffPane
