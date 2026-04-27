@@ -34,6 +34,11 @@ export function useDiffText(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setDiffText(cache.get(key) ?? null);
+    setError(null);
+  }, [key]);
+
+  useEffect(() => {
     if (!enabled) return;
     if (cache.has(key)) {
       setDiffText(cache.get(key)!);
