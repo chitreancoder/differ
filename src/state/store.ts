@@ -85,7 +85,10 @@ export const useStore = create<State & Actions>((set) => ({
   setSelectedCommit: (repoPath, sha) =>
     set((s) => ({ selectedCommit: { ...s.selectedCommit, [repoPath]: sha } })),
   pushToast: (message, kind = "error") =>
-    set((s) => ({ toasts: [...s.toasts, { id: ++toastSeq, message, kind }] })),
+    set((s) => {
+      if (s.toasts.some((t) => t.message === message)) return s;
+      return { toasts: [...s.toasts, { id: ++toastSeq, message, kind }] };
+    }),
   dismissToast: (id) =>
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }));

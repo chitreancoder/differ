@@ -139,7 +139,7 @@ pub async fn diff_name_status(
     let range = format!("{}...{}", base, compare);
     let name_status = run_git(
         &path,
-        &["diff", "--name-status", "-M", "-C", "--no-renames=false", &range],
+        &["diff", "--name-status", "-M", "-C", &range],
     )
     .await?;
     let numstat = run_git(&path, &["diff", "--numstat", "-M", "-C", &range]).await?;
