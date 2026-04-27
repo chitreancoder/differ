@@ -3,6 +3,13 @@ export type Repo = {
   name: string;
   defaultBranch: string | null;
   headBranch: string | null;
+  missing?: boolean;
+};
+
+export type Toast = {
+  id: number;
+  message: string;
+  kind: "error" | "info";
 };
 
 export type Branch = {
