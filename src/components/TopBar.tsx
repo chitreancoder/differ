@@ -1,9 +1,5 @@
-import { useState } from "react";
 import { useStore } from "../state/store";
-import { BranchPickerModal } from "./BranchPickerModal";
 import { CommitTimeline } from "./CommitTimeline";
-
-type PickerKind = "base" | "compare" | null;
 
 export function TopBar() {
   const activeRepoPath = useStore((s) => s.activeRepoPath);
@@ -17,7 +13,7 @@ export function TopBar() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const diffStyle = useStore((s) => s.diffStyle);
   const setDiffStyle = useStore((s) => s.setDiffStyle);
-  const [picker, setPicker] = useState<PickerKind>(null);
+  const setBranchPickerKind = useStore((s) => s.setBranchPickerKind);
 
   if (!activeRepoPath) {
     return (
@@ -25,7 +21,7 @@ export function TopBar() {
         <button
           className="btn-icon"
           onClick={toggleSidebar}
-          title="Toggle sidebar"
+          title="Toggle sidebar (⌘\\)"
         >
           ☰
         </button>
@@ -35,74 +31,64 @@ export function TopBar() {
   }
 
   return (
-    <>
-      <header className="topbar">
+    <header className="topbar">
+      <button
+        className="btn-icon"
+        onClick={toggleSidebar}
+        title="Toggle sidebar (⌘\\)"
+      >
+        ☰
+      </button>
+
+      <div className="branch-slots">
+        <button
+          className="branch-slot"
+          onClick={() => setBranchPickerKind("base")}
+          title="Pick base branch"
+        >
+          <span className="muted">base</span>
+          <span>{base ?? "—"}</span>
+        </button>
         <button
           className="btn-icon"
-          onClick={toggleSidebar}
-          title="Toggle sidebar"
+          onClick={() => swapBranches(activeRepoPath)}
+          disabled={!base || !compare}
+          title="Swap branches"
+        >
+          ⇄
+        </button>
+        <button
+          className="branch-slot"
+          onClick={() => setBranchPickerKind("compare")}
+          title="Pick compare branch"
+        >
+          <span className="muted">compare</span>
+          <span>{compare ?? "—"}</span>
+        </button>
+      </div>
+
+      <CommitTimeline
+        repoPath={activeRepoPath}
+        base={base}
+        compare={compare}
+      />
+
+      <div className="topbar-tools">
+        <button
+          className={`btn-toggle ${diffStyle === "split" ? "active" : ""}`}
+          onClick={() => setDiffStyle("split")}
+          title="Side-by-side diff"
+        >
+          ⇉
+        </button>
+        <button
+          className={`btn-toggle ${diffStyle === "unified" ? "active" : ""}`}
+          onClick={() => setDiffStyle("unified")}
+          title="Unified diff (⌘L to toggle)"
         >
           ☰
         </button>
-
-        <div className="branch-slots">
-          <button
-            className="branch-slot"
-            onClick={() => setPicker("base")}
-            title="Pick base branch"
-          >
-            <span className="muted">base</span>
-            <span>{base ?? "—"}</span>
-          </button>
-          <button
-            className="btn-icon"
-            onClick={() => swapBranches(activeRepoPath)}
-            disabled={!base || !compare}
-            title="Swap branches"
-          >
-            ⇄
-          </button>
-          <button
-            className="branch-slot"
-            onClick={() => setPicker("compare")}
-            title="Pick compare branch"
-          >
-            <span className="muted">compare</span>
-            <span>{compare ?? "—"}</span>
-          </button>
-        </div>
-
-        <CommitTimeline
-          repoPath={activeRepoPath}
-          base={base}
-          compare={compare}
-        />
-
-        <div className="topbar-tools">
-          <button
-            className={`btn-toggle ${diffStyle === "split" ? "active" : ""}`}
-            onClick={() => setDiffStyle("split")}
-            title="Side-by-side diff"
-          >
-            ⇉
-          </button>
-          <button
-            className={`btn-toggle ${diffStyle === "unified" ? "active" : ""}`}
-            onClick={() => setDiffStyle("unified")}
-            title="Unified diff"
-          >
-            ☰
-          </button>
-        </div>
-      </header>
-
-      {picker && (
-        <BranchPickerModal
-          repoPath={activeRepoPath}
-          kind={picker}
-          onClose={() => setPicker(null)}
-        />
-      )}
-    </>
+      </div>
+    </header>
   );
 }
