@@ -632,3 +632,81 @@ code {
   padding: 1px 4px;
   border-radius: 3px;
 }
+
+/* Diff pane (list of file diffs) */
+.diff-list {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 12px;
+}
+
+.file-diff {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.file-diff-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-elevated);
+  z-index: 1;
+}
+
+.file-diff-status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+  font-weight: 600;
+}
+
+.file-diff-path {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-diff-counts {
+  display: inline-flex;
+  gap: 6px;
+  font-size: 11px;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.file-diff-toggle {
+  width: 22px;
+  height: 22px;
+}
+
+.file-diff-collapsed,
+.file-diff-binary,
+.file-diff-empty,
+.file-diff-loading {
+  padding: 14px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.file-diff-error {
+  padding: 14px;
+  font-size: 12px;
+  color: var(--deleted);
+}
+
+.file-diff-body {
+  font-size: 12px;
+}

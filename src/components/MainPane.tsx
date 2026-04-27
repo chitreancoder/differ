@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../state/store";
 import { useDiffFiles } from "../state/diff";
 import { FileTree } from "./FileTree";
+import { DiffPane, type DiffPaneHandle } from "./DiffPane";
 
 export function MainPane() {
   const repos = useStore((s) => s.repos);
@@ -15,6 +16,7 @@ export function MainPane() {
   const selectedCommit = useStore((s) =>
     activeRepoPath ? s.selectedCommit[activeRepoPath] ?? null : null,
   );
+  const diffStyle = useStore((s) => s.diffStyle);
 
   const { files, loading, error } = useDiffFiles(
     activeRepoPath,
@@ -23,11 +25,11 @@ export function MainPane() {
     selectedCommit,
   );
 
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
+  const diffPaneRef = useRef<DiffPaneHandle>(null);
 
-  // Reset selection when the diff context changes.
   useEffect(() => {
-    setSelectedPath(null);
+    setCurrentFilePath(null);
   }, [activeRepoPath, base, compare, selectedCommit]);
 
   if (repos.length === 0) {
@@ -67,8 +69,11 @@ export function MainPane() {
         <FileTree
           files={files}
           loading={loading}
-          selectedPath={selectedPath}
-          onSelect={setSelectedPath}
+          selectedPath={currentFilePath}
+          onSelect={(path) => {
+            setCurrentFilePath(path);
+            diffPaneRef.current?.scrollToFile(path);
+          }}
         />
       </div>
       <div className="diff-pane">
@@ -80,16 +85,17 @@ export function MainPane() {
           <div className="empty-card">
             <p className="muted">These branches are identical.</p>
           </div>
-        ) : selectedPath ? (
-          <div className="empty-card">
-            <p className="muted">
-              Diff for <code>{selectedPath}</code> renders next.
-            </p>
-          </div>
         ) : (
-          <div className="empty-card">
-            <p className="muted">Select a file from the tree.</p>
-          </div>
+          <DiffPane
+            ref={diffPaneRef}
+            files={files}
+            repoPath={activeRepoPath}
+            base={base}
+            compare={compare}
+            selectedCommit={selectedCommit}
+            diffStyle={diffStyle}
+            onVisibleFileChange={setCurrentFilePath}
+          />
         )}
       </div>
     </main>
