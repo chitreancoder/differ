@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useStore } from "../state/store";
 import { BranchPickerModal } from "./BranchPickerModal";
+import { CommitTimeline } from "./CommitTimeline";
 
 type PickerKind = "base" | "compare" | null;
 
@@ -71,11 +72,11 @@ export function TopBar() {
           </button>
         </div>
 
-        <div className="topbar-spacer" />
-
-        <div className="commit-timeline-placeholder muted">
-          commits will appear here
-        </div>
+        <CommitTimeline
+          repoPath={activeRepoPath}
+          base={base}
+          compare={compare}
+        />
 
         <div className="topbar-tools">
           <button

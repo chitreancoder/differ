@@ -223,13 +223,73 @@ button:disabled {
   letter-spacing: 0.05em;
 }
 
-.topbar-spacer {
+.commit-timeline {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
+  padding: 0 4px;
+  scrollbar-width: thin;
 }
 
-.commit-timeline-placeholder {
+.commit-timeline.empty {
   font-size: 11px;
   font-style: italic;
+  padding-left: 8px;
+}
+
+.commit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 220px;
+}
+
+.commit-chip:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+}
+
+.commit-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.commit-chip.all {
+  font-weight: 600;
+}
+
+.commit-chip.merge .commit-sha {
+  font-style: italic;
+}
+
+.commit-chip .commit-sha {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  color: var(--fg-muted);
+}
+
+.commit-chip.active .commit-sha {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.commit-chip .commit-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
 }
 
 .topbar-tools {
