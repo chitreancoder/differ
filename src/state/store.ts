@@ -69,9 +69,15 @@ export const useStore = create<State & Actions>((set) => ({
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setDiffStyle: (style) => set({ diffStyle: style }),
   setBase: (repoPath, branch) =>
-    set((s) => ({ base: { ...s.base, [repoPath]: branch } })),
+    set((s) => ({
+      base: { ...s.base, [repoPath]: branch },
+      selectedCommit: { ...s.selectedCommit, [repoPath]: null },
+    })),
   setCompare: (repoPath, branch) =>
-    set((s) => ({ compare: { ...s.compare, [repoPath]: branch } })),
+    set((s) => ({
+      compare: { ...s.compare, [repoPath]: branch },
+      selectedCommit: { ...s.selectedCommit, [repoPath]: null },
+    })),
   swapBranches: (repoPath) =>
     set((s) => {
       const a = s.base[repoPath];
@@ -80,6 +86,7 @@ export const useStore = create<State & Actions>((set) => ({
       return {
         base: { ...s.base, [repoPath]: b },
         compare: { ...s.compare, [repoPath]: a },
+        selectedCommit: { ...s.selectedCommit, [repoPath]: null },
       };
     }),
   setSelectedCommit: (repoPath, sha) =>
