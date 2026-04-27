@@ -7,10 +7,29 @@ import { Toasts } from "./components/Toasts";
 import { useSystemTheme } from "./theme";
 import { loadPersisted, startPersistSubscription } from "./state/persist";
 import { addRepoByPath } from "./state/repoActions";
+import { useStore } from "./state/store";
 import "./App.css";
+
+function useBranchDefaults() {
+  const activeRepoPath = useStore((s) => s.activeRepoPath);
+  const repos = useStore((s) => s.repos);
+  useEffect(() => {
+    if (!activeRepoPath) return;
+    const repo = repos.find((r) => r.path === activeRepoPath);
+    if (!repo || repo.missing) return;
+    const { base, compare, setBase, setCompare } = useStore.getState();
+    if (!base[activeRepoPath] && repo.defaultBranch) {
+      setBase(activeRepoPath, repo.defaultBranch);
+    }
+    if (!compare[activeRepoPath] && repo.headBranch) {
+      setCompare(activeRepoPath, repo.headBranch);
+    }
+  }, [activeRepoPath, repos]);
+}
 
 function App() {
   useSystemTheme();
+  useBranchDefaults();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
