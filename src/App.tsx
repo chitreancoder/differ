@@ -10,8 +10,40 @@ import { useSystemTheme } from "./theme";
 import { useShortcuts } from "./state/shortcuts";
 import { loadPersisted, startPersistSubscription } from "./state/persist";
 import { addRepoByPath } from "./state/repoActions";
+import { autoFetchOnce, refreshAll } from "./state/refresh";
 import { useStore } from "./state/store";
 import "./App.css";
+
+function useAutoFetchOnRepoSwitch() {
+  const activeRepoPath = useStore((s) => s.activeRepoPath);
+  const repos = useStore((s) => s.repos);
+  useEffect(() => {
+    if (!activeRepoPath) return;
+    const repo = repos.find((r) => r.path === activeRepoPath);
+    if (!repo || repo.missing) return;
+    autoFetchOnce(activeRepoPath);
+  }, [activeRepoPath, repos]);
+}
+
+function useFocusRefresh() {
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    let lastBlurAt = 0;
+    (async () => {
+      unlisten = await getCurrentWindow().onFocusChanged((event) => {
+        if (!event.payload) {
+          lastBlurAt = Date.now();
+          return;
+        }
+        if (Date.now() - lastBlurAt < 30_000) return;
+        refreshAll();
+      });
+    })();
+    return () => {
+      unlisten?.();
+    };
+  }, []);
+}
 
 function useBranchDefaults() {
   const activeRepoPath = useStore((s) => s.activeRepoPath);
@@ -33,6 +65,8 @@ function useBranchDefaults() {
 function App() {
   useSystemTheme();
   useBranchDefaults();
+  useAutoFetchOnRepoSwitch();
+  useFocusRefresh();
   useShortcuts();
   const [ready, setReady] = useState(false);
   const branchPickerKind = useStore((s) => s.branchPickerKind);

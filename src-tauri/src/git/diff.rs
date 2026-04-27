@@ -192,6 +192,13 @@ pub async fn diff_commit_name_status(
 }
 
 #[tauri::command]
+pub async fn repo_fetch(path: String) -> Result<(), String> {
+    run_git(&path, &["fetch", "--all", "--prune", "--quiet"])
+        .await
+        .map(|_| ())
+}
+
+#[tauri::command]
 pub async fn diff_commit_file(
     path: String,
     sha: String,

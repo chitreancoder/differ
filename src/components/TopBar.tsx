@@ -1,4 +1,5 @@
 import { useStore } from "../state/store";
+import { fetchRemote } from "../state/refresh";
 import { CommitTimeline } from "./CommitTimeline";
 
 export function TopBar() {
@@ -14,6 +15,9 @@ export function TopBar() {
   const diffStyle = useStore((s) => s.diffStyle);
   const setDiffStyle = useStore((s) => s.setDiffStyle);
   const setBranchPickerKind = useStore((s) => s.setBranchPickerKind);
+  const fetching = useStore((s) =>
+    activeRepoPath ? !!s.fetchingRepos[activeRepoPath] : false,
+  );
 
   if (!activeRepoPath) {
     return (
@@ -72,6 +76,15 @@ export function TopBar() {
         base={base}
         compare={compare}
       />
+
+      <button
+        className={`btn-icon refresh-btn ${fetching ? "spinning" : ""}`}
+        onClick={() => fetchRemote(activeRepoPath)}
+        disabled={fetching}
+        title="Fetch &amp; refresh (⌘R)"
+      >
+        ↻
+      </button>
 
       <div className="topbar-tools">
         <button

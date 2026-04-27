@@ -2,7 +2,7 @@ mod git;
 
 use git::{
     diff_commit_file, diff_commit_name_status, diff_file, diff_name_status, find_merge_base,
-    list_branches, list_commits, validate_repo,
+    list_branches, list_commits, repo_fetch, validate_repo,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -15,6 +15,7 @@ pub fn run() {
             list_branches,
             list_commits,
             find_merge_base,
+            repo_fetch,
             diff_name_status,
             diff_file,
             diff_commit_name_status,

@@ -14,6 +14,7 @@ type State = {
   paletteOpen: boolean;
   branchPickerKind: "base" | "compare" | null;
   refreshCounter: number;
+  fetchingRepos: Record<string, boolean>;
   toasts: Toast[];
   hydrated: boolean;
 };
@@ -37,6 +38,7 @@ type Actions = {
   togglePalette: () => void;
   setBranchPickerKind: (kind: "base" | "compare" | null) => void;
   bumpRefresh: () => void;
+  setFetching: (repoPath: string, fetching: boolean) => void;
   pushToast: (message: string, kind?: "error" | "info") => void;
   dismissToast: (id: number) => void;
 };
@@ -56,6 +58,7 @@ export const useStore = create<State & Actions>((set) => ({
   paletteOpen: false,
   branchPickerKind: null,
   refreshCounter: 0,
+  fetchingRepos: {},
   toasts: [],
   hydrated: false,
 
@@ -116,6 +119,13 @@ export const useStore = create<State & Actions>((set) => ({
   togglePalette: () => set((s) => ({ paletteOpen: !s.paletteOpen })),
   setBranchPickerKind: (kind) => set({ branchPickerKind: kind }),
   bumpRefresh: () => set((s) => ({ refreshCounter: s.refreshCounter + 1 })),
+  setFetching: (repoPath, fetching) =>
+    set((s) => {
+      const next = { ...s.fetchingRepos };
+      if (fetching) next[repoPath] = true;
+      else delete next[repoPath];
+      return { fetchingRepos: next };
+    }),
   pushToast: (message, kind = "error") =>
     set((s) => {
       if (s.toasts.some((t) => t.message === message)) return s;
