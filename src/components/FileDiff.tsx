@@ -7,7 +7,6 @@ import {
   fileAnchorId,
   isTooLarge,
   langFromPath,
-  shouldCollapseByDefault,
   splitHunks,
 } from "../utils/diff";
 
@@ -53,8 +52,7 @@ export function FileDiff({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooLarge = isTooLarge(file);
-  const collapsedDefault = shouldCollapseByDefault(file);
-  const [expanded, setExpanded] = useState(!collapsedDefault && !tooLarge);
+  const [expanded, setExpanded] = useState(!tooLarge);
   const [inViewport, setInViewport] = useState(false);
 
   const shouldFetch =
@@ -130,7 +128,7 @@ export function FileDiff({
         <div className="file-diff-collapsed muted">
           {tooLarge
             ? `Diff too large (${file.additions + file.deletions} lines). Open externally.`
-            : "Collapsed. Click ▸ to expand."}
+            : `Collapsed (${file.additions}+ ${file.deletions}−). Click ▸ to expand.`}
         </div>
       )}
 
