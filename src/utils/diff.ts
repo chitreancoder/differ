@@ -31,23 +31,6 @@ export function fileAnchorId(path: string): string {
   return `file-${path.replace(/[^a-zA-Z0-9]/g, "_")}`;
 }
 
-/** Split a `git diff` output into hunks (each beginning with `@@`). */
-export function splitHunks(diffText: string): string[] {
-  const lines = diffText.split("\n");
-  const hunks: string[] = [];
-  let current: string[] | null = null;
-  for (const line of lines) {
-    if (line.startsWith("@@")) {
-      if (current) hunks.push(current.join("\n"));
-      current = [line];
-    } else if (current) {
-      current.push(line);
-    }
-  }
-  if (current && current.length > 0) hunks.push(current.join("\n"));
-  return hunks;
-}
-
 const EXTENSION_LANG: Record<string, string> = {
   ts: "typescript",
   tsx: "tsx",

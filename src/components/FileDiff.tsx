@@ -1,14 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view.css";
 import type { FileEntry, DiffStyle } from "../types";
 import { useDiffText } from "../state/diffText";
-import {
-  fileAnchorId,
-  isTooLarge,
-  langFromPath,
-  splitHunks,
-} from "../utils/diff";
+import { fileAnchorId, isTooLarge, langFromPath } from "../utils/diff";
 
 type Props = {
   file: FileEntry;
@@ -67,7 +62,6 @@ export function FileDiff({
     shouldFetch,
   );
 
-  // Lazy-load + scroll-spy via IntersectionObserver.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -91,11 +85,7 @@ export function FileDiff({
     };
   }, [file.path, onVisible]);
 
-  const hunks = useMemo(
-    () => (diffText ? splitHunks(diffText) : []),
-    [diffText],
-  );
-
+  const hasHunks = diffText !== null && diffText.includes("\n@@");
   const lang = langFromPath(file.path);
 
   return (
@@ -128,7 +118,7 @@ export function FileDiff({
         <div className="file-diff-collapsed muted">
           {tooLarge
             ? `Diff too large (${file.additions + file.deletions} lines). Open externally.`
-            : `Collapsed (${file.additions}+ ${file.deletions}−). Click ▸ to expand.`}
+            : "Collapsed. Click ▸ to expand."}
         </div>
       )}
 
@@ -142,17 +132,17 @@ export function FileDiff({
             <div className="file-diff-loading muted">Loading diff…</div>
           )}
           {error && <div className="file-diff-error">{error}</div>}
-          {diffText !== null && hunks.length === 0 && (
+          {diffText !== null && !hasHunks && (
             <div className="file-diff-empty muted">
               No textual changes (rename or mode change only).
             </div>
           )}
-          {diffText !== null && hunks.length > 0 && (
+          {diffText !== null && hasHunks && (
             <DiffView
               data={{
                 oldFile: { fileName: file.path, fileLang: lang },
                 newFile: { fileName: file.path, fileLang: lang },
-                hunks,
+                hunks: [diffText],
               }}
               diffViewMode={
                 diffStyle === "split"
