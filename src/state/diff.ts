@@ -29,6 +29,8 @@ export function useDiffFiles(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const refreshCounter = useStore((s) => s.refreshCounter);
+
   useEffect(() => {
     let cancelled = false;
     if (!repoPath || !base || !compare) {
@@ -67,7 +69,7 @@ export function useDiffFiles(
     return () => {
       cancelled = true;
     };
-  }, [repoPath, base, compare, selectedCommit]);
+  }, [repoPath, base, compare, selectedCommit, refreshCounter]);
 
   return { files, loading, error };
 }

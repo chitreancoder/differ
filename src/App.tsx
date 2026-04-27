@@ -4,7 +4,10 @@ import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { MainPane } from "./components/MainPane";
 import { Toasts } from "./components/Toasts";
+import { CommandPalette } from "./components/CommandPalette";
+import { BranchPickerModal } from "./components/BranchPickerModal";
 import { useSystemTheme } from "./theme";
+import { useShortcuts } from "./state/shortcuts";
 import { loadPersisted, startPersistSubscription } from "./state/persist";
 import { addRepoByPath } from "./state/repoActions";
 import { useStore } from "./state/store";
@@ -30,7 +33,11 @@ function useBranchDefaults() {
 function App() {
   useSystemTheme();
   useBranchDefaults();
+  useShortcuts();
   const [ready, setReady] = useState(false);
+  const branchPickerKind = useStore((s) => s.branchPickerKind);
+  const setBranchPickerKind = useStore((s) => s.setBranchPickerKind);
+  const activeRepoPath = useStore((s) => s.activeRepoPath);
 
   useEffect(() => {
     let unsub: (() => void) | null = null;
@@ -66,6 +73,14 @@ function App() {
         <MainPane />
       </div>
       <Toasts />
+      <CommandPalette />
+      {branchPickerKind && activeRepoPath && (
+        <BranchPickerModal
+          repoPath={activeRepoPath}
+          kind={branchPickerKind}
+          onClose={() => setBranchPickerKind(null)}
+        />
+      )}
     </div>
   );
 }

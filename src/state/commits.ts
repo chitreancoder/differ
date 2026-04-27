@@ -15,6 +15,7 @@ export function useCommits(
   compare: string | null,
 ): { commits: Commit[]; loading: boolean; error: string | null } {
   const key = repoPath && base && compare ? makeKey(repoPath, base, compare) : null;
+  const refreshCounter = useStore((s) => s.refreshCounter);
   const [commits, setCommits] = useState<Commit[]>(() =>
     key ? (cache.get(key) ?? []) : [],
   );
@@ -51,7 +52,7 @@ export function useCommits(
     return () => {
       cancelled = true;
     };
-  }, [key, repoPath, base, compare]);
+  }, [key, repoPath, base, compare, refreshCounter]);
 
   return { commits, loading, error };
 }

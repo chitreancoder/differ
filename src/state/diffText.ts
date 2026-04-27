@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useStore } from "./store";
 
 type Key = string;
 const cache = new Map<Key, string>();
@@ -25,6 +26,7 @@ export function useDiffText(
   enabled: boolean,
 ): { diffText: string | null; loading: boolean; error: string | null } {
   const key = makeKey(repoPath, base, compare, selectedCommit, filePath);
+  const refreshCounter = useStore((s) => s.refreshCounter);
   const [diffText, setDiffText] = useState<string | null>(
     cache.get(key) ?? null,
   );
@@ -69,7 +71,7 @@ export function useDiffText(
     return () => {
       cancelled = true;
     };
-  }, [key, enabled]);
+  }, [key, enabled, refreshCounter]);
 
   return { diffText, loading, error };
 }

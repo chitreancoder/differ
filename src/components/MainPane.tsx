@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useStore } from "../state/store";
 import { useDiffFiles } from "../state/diff";
 import { FileTree } from "./FileTree";
@@ -17,6 +17,9 @@ export function MainPane() {
     activeRepoPath ? s.selectedCommit[activeRepoPath] ?? null : null,
   );
   const diffStyle = useStore((s) => s.diffStyle);
+  const currentFilePath = useStore((s) => s.currentFilePath);
+  const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
+  const setCurrentFiles = useStore((s) => s.setCurrentFiles);
 
   const { files, loading, error } = useDiffFiles(
     activeRepoPath,
@@ -25,12 +28,15 @@ export function MainPane() {
     selectedCommit,
   );
 
-  const [currentFilePath, setCurrentFilePath] = useState<string | null>(null);
   const diffPaneRef = useRef<DiffPaneHandle>(null);
 
   useEffect(() => {
     setCurrentFilePath(null);
-  }, [activeRepoPath, base, compare, selectedCommit]);
+  }, [activeRepoPath, base, compare, selectedCommit, setCurrentFilePath]);
+
+  useEffect(() => {
+    setCurrentFiles(files);
+  }, [files, setCurrentFiles]);
 
   if (repos.length === 0) {
     return (

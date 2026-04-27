@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { DiffStyle, Repo, Toast } from "../types";
+import type { DiffStyle, FileEntry, Repo, Toast } from "../types";
 
 type State = {
   repos: Repo[];
@@ -9,6 +9,11 @@ type State = {
   base: Record<string, string>;
   compare: Record<string, string>;
   selectedCommit: Record<string, string | null>;
+  currentFiles: FileEntry[];
+  currentFilePath: string | null;
+  paletteOpen: boolean;
+  branchPickerKind: "base" | "compare" | null;
+  refreshCounter: number;
   toasts: Toast[];
   hydrated: boolean;
 };
@@ -21,10 +26,17 @@ type Actions = {
   setActiveRepo: (path: string | null) => void;
   toggleSidebar: () => void;
   setDiffStyle: (style: DiffStyle) => void;
+  toggleDiffStyle: () => void;
   setBase: (repoPath: string, branch: string) => void;
   setCompare: (repoPath: string, branch: string) => void;
   swapBranches: (repoPath: string) => void;
   setSelectedCommit: (repoPath: string, sha: string | null) => void;
+  setCurrentFiles: (files: FileEntry[]) => void;
+  setCurrentFilePath: (path: string | null) => void;
+  setPaletteOpen: (open: boolean) => void;
+  togglePalette: () => void;
+  setBranchPickerKind: (kind: "base" | "compare" | null) => void;
+  bumpRefresh: () => void;
   pushToast: (message: string, kind?: "error" | "info") => void;
   dismissToast: (id: number) => void;
 };
@@ -39,6 +51,11 @@ export const useStore = create<State & Actions>((set) => ({
   base: {},
   compare: {},
   selectedCommit: {},
+  currentFiles: [],
+  currentFilePath: null,
+  paletteOpen: false,
+  branchPickerKind: null,
+  refreshCounter: 0,
   toasts: [],
   hydrated: false,
 
@@ -65,9 +82,11 @@ export const useStore = create<State & Actions>((set) => ({
     set((s) => ({
       repos: s.repos.map((r) => (r.path === path ? { ...r, ...patch } : r)),
     })),
-  setActiveRepo: (path) => set({ activeRepoPath: path }),
+  setActiveRepo: (path) => set({ activeRepoPath: path, currentFilePath: null }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
   setDiffStyle: (style) => set({ diffStyle: style }),
+  toggleDiffStyle: () =>
+    set((s) => ({ diffStyle: s.diffStyle === "split" ? "unified" : "split" })),
   setBase: (repoPath, branch) =>
     set((s) => ({
       base: { ...s.base, [repoPath]: branch },
@@ -91,6 +110,12 @@ export const useStore = create<State & Actions>((set) => ({
     }),
   setSelectedCommit: (repoPath, sha) =>
     set((s) => ({ selectedCommit: { ...s.selectedCommit, [repoPath]: sha } })),
+  setCurrentFiles: (files) => set({ currentFiles: files }),
+  setCurrentFilePath: (path) => set({ currentFilePath: path }),
+  setPaletteOpen: (open) => set({ paletteOpen: open }),
+  togglePalette: () => set((s) => ({ paletteOpen: !s.paletteOpen })),
+  setBranchPickerKind: (kind) => set({ branchPickerKind: kind }),
+  bumpRefresh: () => set((s) => ({ refreshCounter: s.refreshCounter + 1 })),
   pushToast: (message, kind = "error") =>
     set((s) => {
       if (s.toasts.some((t) => t.message === message)) return s;
