@@ -33,6 +33,18 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
     chip?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }, [selectedCommit]);
 
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   if (!base || !compare) {
     return <div className="commit-timeline empty muted">—</div>;
   }

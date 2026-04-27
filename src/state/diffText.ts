@@ -3,7 +3,26 @@ import { invoke } from "@tauri-apps/api/core";
 import { useStore } from "./store";
 
 type Key = string;
+const CACHE_LIMIT = 200;
 const cache = new Map<Key, string>();
+
+function cacheGet(key: Key): string | undefined {
+  const value = cache.get(key);
+  if (value !== undefined) {
+    cache.delete(key);
+    cache.set(key, value);
+  }
+  return value;
+}
+
+function cacheSet(key: Key, value: string): void {
+  if (cache.has(key)) cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > CACHE_LIMIT) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+}
 
 function makeKey(
   repoPath: string,
@@ -28,20 +47,21 @@ export function useDiffText(
   const key = makeKey(repoPath, base, compare, selectedCommit, filePath);
   const refreshCounter = useStore((s) => s.refreshCounter);
   const [diffText, setDiffText] = useState<string | null>(
-    cache.get(key) ?? null,
+    cacheGet(key) ?? null,
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setDiffText(cache.get(key) ?? null);
+    setDiffText(cacheGet(key) ?? null);
     setError(null);
   }, [key]);
 
   useEffect(() => {
     if (!enabled) return;
-    if (cache.has(key)) {
-      setDiffText(cache.get(key)!);
+    const cached = cacheGet(key);
+    if (cached !== undefined) {
+      setDiffText(cached);
       return;
     }
     let cancelled = false;
@@ -62,7 +82,7 @@ export function useDiffText(
     promise
       .then((text) => {
         if (cancelled) return;
-        cache.set(key, text);
+        cacheSet(key, text);
         setDiffText(text);
       })
       .catch((err) => {

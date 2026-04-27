@@ -814,7 +814,8 @@ kbd {
 }
 
 .filetree-status.renamed,
-.filetree-status.copied {
+.filetree-status.copied,
+.filetree-status.unknown {
   background: var(--fg-muted);
   color: var(--bg);
 }
