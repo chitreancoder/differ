@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view.css";
+import type { DiffHighlighter } from "@git-diff-view/shiki";
 import type { FileEntry, DiffStyle } from "../types";
 import { useDiffText } from "../state/diffText";
+import { getHighlighter } from "../state/highlighter";
+import { useSystemTheme } from "../theme";
 import { fileAnchorId, isTooLarge, langFromPath } from "../utils/diff";
 
 type Props = {
@@ -49,9 +52,22 @@ export function FileDiff({
   const tooLarge = isTooLarge(file);
   const [expanded, setExpanded] = useState(!tooLarge);
   const [inViewport, setInViewport] = useState(false);
+  const [highlighter, setHighlighter] = useState<DiffHighlighter | null>(null);
+  const theme = useSystemTheme();
 
   const shouldFetch =
     expanded && !file.isBinary && !tooLarge && inViewport;
+
+  useEffect(() => {
+    if (!shouldFetch) return;
+    let cancelled = false;
+    getHighlighter().then((h) => {
+      if (!cancelled) setHighlighter(h);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldFetch]);
 
   const { diffText, loading, error } = useDiffText(
     repoPath,
@@ -150,7 +166,9 @@ export function FileDiff({
                   : DiffModeEnum.Unified
               }
               diffViewWrap
-              diffViewHighlight={false}
+              diffViewHighlight={highlighter !== null}
+              diffViewTheme={theme}
+              registerHighlighter={highlighter ?? undefined}
               diffViewFontSize={12}
             />
           )}
