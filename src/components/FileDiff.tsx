@@ -7,6 +7,7 @@ import { useDiffText } from "../state/diffText";
 import { getHighlighter } from "../state/highlighter";
 import { useSystemTheme } from "../theme";
 import { fileAnchorId, isTooLarge, langFromPath } from "../utils/diff";
+import { DiffViewBoundary } from "./DiffViewBoundary";
 
 type Props = {
   file: FileEntry;
@@ -154,23 +155,27 @@ export function FileDiff({
             </div>
           )}
           {diffText !== null && hasHunks && (
-            <DiffView
-              data={{
-                oldFile: { fileName: file.path, fileLang: lang },
-                newFile: { fileName: file.path, fileLang: lang },
-                hunks: [diffText],
-              }}
-              diffViewMode={
-                diffStyle === "split"
-                  ? DiffModeEnum.Split
-                  : DiffModeEnum.Unified
-              }
-              diffViewWrap
-              diffViewHighlight={highlighter !== null}
-              diffViewTheme={theme}
-              registerHighlighter={highlighter ?? undefined}
-              diffViewFontSize={12}
-            />
+            <DiffViewBoundary
+              diffKey={`${file.path}|${selectedCommit ?? "all"}|${diffStyle}`}
+            >
+              <DiffView
+                data={{
+                  oldFile: { fileName: file.path, fileLang: lang },
+                  newFile: { fileName: file.path, fileLang: lang },
+                  hunks: [diffText],
+                }}
+                diffViewMode={
+                  diffStyle === "split"
+                    ? DiffModeEnum.Split
+                    : DiffModeEnum.Unified
+                }
+                diffViewWrap
+                diffViewHighlight={highlighter !== null}
+                diffViewTheme={theme}
+                registerHighlighter={highlighter ?? undefined}
+                diffViewFontSize={12}
+              />
+            </DiffViewBoundary>
           )}
         </div>
       )}
