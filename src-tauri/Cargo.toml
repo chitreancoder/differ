@@ -1,6 +1,6 @@
 [package]
 name = "differ"
-version = "0.1.3"
+version = "0.1.4"
 description = "Branch-level git diff viewer"
 authors = ["chitreancoder"]
 edition = "2021"
