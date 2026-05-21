@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Commit } from "../types";
+import { isWorkingTree } from "../types";
 import { useStore } from "./store";
 
 const cache = new Map<string, Commit[]>();
@@ -14,7 +15,9 @@ export function useCommits(
   base: string | null,
   compare: string | null,
 ): { commits: Commit[]; loading: boolean; error: string | null } {
-  const key = repoPath && base && compare ? makeKey(repoPath, base, compare) : null;
+  const skip = isWorkingTree(compare) || isWorkingTree(base);
+  const key =
+    repoPath && base && compare && !skip ? makeKey(repoPath, base, compare) : null;
   const refreshCounter = useStore((s) => s.refreshCounter);
   const [commits, setCommits] = useState<Commit[]>(() =>
     key ? (cache.get(key) ?? []) : [],

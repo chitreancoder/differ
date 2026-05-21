@@ -6,6 +6,8 @@ import { MainPane } from "./components/MainPane";
 import { Toasts } from "./components/Toasts";
 import { CommandPalette } from "./components/CommandPalette";
 import { BranchPickerModal } from "./components/BranchPickerModal";
+import { StatusBar } from "./components/StatusBar";
+import { ShortcutsHelp } from "./components/ShortcutsHelp";
 import { useSystemTheme } from "./theme";
 import { useShortcuts } from "./state/shortcuts";
 import { loadPersisted, startPersistSubscription } from "./state/persist";
@@ -105,9 +107,11 @@ function App() {
       <div className="workspace">
         <TopBar />
         <MainPane />
+        <StatusBar />
       </div>
       <Toasts />
       <CommandPalette />
+      <ShortcutsHelp />
       {branchPickerKind && activeRepoPath && (
         <BranchPickerModal
           repoPath={activeRepoPath}

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { isWorkingTree } from "../types";
 import { useStore } from "./store";
 
 type Key = string;
-const CACHE_LIMIT = 200;
+const CACHE_LIMIT = 20;
 const cache = new Map<Key, string>();
 
 function cacheGet(key: Key): string | undefined {
@@ -24,70 +25,74 @@ function cacheSet(key: Key, value: string): void {
   }
 }
 
-function makeKey(
+export function fullDiffKey(
   repoPath: string,
   base: string,
   compare: string,
   selectedCommit: string | null,
-  filePath: string,
 ): Key {
   return selectedCommit
-    ? `${repoPath}commit${selectedCommit}${filePath}`
-    : `${repoPath}${base}...${compare}${filePath}`;
+    ? `${repoPath}|commit|${selectedCommit}`
+    : `${repoPath}|${base}...${compare}`;
 }
 
-export function useDiffText(
-  repoPath: string,
-  base: string,
-  compare: string,
+/**
+ * Fetches the entire multi-file patch for the current comparison in one shot.
+ * `@pierre/diffs`' CodeView virtualizes across all files, so we no longer fetch
+ * per-file — the whole patch is parsed once and rendered as a single surface.
+ */
+export function useFullDiff(
+  repoPath: string | null,
+  base: string | null,
+  compare: string | null,
   selectedCommit: string | null,
-  filePath: string,
-  enabled: boolean,
-): { diffText: string | null; loading: boolean; error: string | null } {
-  const key = makeKey(repoPath, base, compare, selectedCommit, filePath);
+): { patch: string | null; loading: boolean; error: string | null } {
   const refreshCounter = useStore((s) => s.refreshCounter);
-  const [diffText, setDiffText] = useState<string | null>(
-    cacheGet(key) ?? null,
+  const key =
+    repoPath && base && compare
+      ? fullDiffKey(repoPath, base, compare, selectedCommit)
+      : null;
+  const [patch, setPatch] = useState<string | null>(
+    key ? (cacheGet(key) ?? null) : null,
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setDiffText(cacheGet(key) ?? null);
-    setError(null);
-  }, [key]);
-
-  useEffect(() => {
-    if (!enabled) return;
+    if (!repoPath || !base || !compare || !key) {
+      setPatch(null);
+      setError(null);
+      return;
+    }
     const cached = cacheGet(key);
     if (cached !== undefined) {
-      setDiffText(cached);
+      setPatch(cached);
+      setError(null);
       return;
     }
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setPatch(null);
     const promise = selectedCommit
-      ? invoke<string>("diff_commit_file", {
+      ? invoke<string>("diff_commit_all", {
           path: repoPath,
           sha: selectedCommit,
-          file: filePath,
         })
-      : invoke<string>("diff_file", {
-          path: repoPath,
-          base,
-          compare,
-          file: filePath,
-        });
+      : isWorkingTree(compare)
+        ? invoke<string>("diff_working_tree_all", { path: repoPath, base })
+        : invoke<string>("diff_all", { path: repoPath, base, compare });
     promise
       .then((text) => {
         if (cancelled) return;
         cacheSet(key, text);
-        setDiffText(text);
+        setPatch(text);
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(String(err));
+        const msg = String(err);
+        setError(msg);
+        useStore.getState().pushToast(`Diff failed: ${msg}`);
       })
       .finally(() => {
         if (cancelled) return;
@@ -96,11 +101,11 @@ export function useDiffText(
     return () => {
       cancelled = true;
     };
-  }, [key, enabled, refreshCounter]);
+  }, [key, refreshCounter]);
 
-  return { diffText, loading, error };
+  return { patch, loading, error };
 }
 
-export function clearDiffTextCache() {
+export function clearFullDiffCache() {
   cache.clear();
 }

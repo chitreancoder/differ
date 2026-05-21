@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useCommits } from "../state/commits";
 import { useStore } from "../state/store";
+import { isWorkingTree } from "../types";
 
 type Props = {
   repoPath: string;
@@ -47,6 +48,14 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
 
   if (!base || !compare) {
     return <div className="commit-timeline empty muted">—</div>;
+  }
+
+  if (isWorkingTree(compare)) {
+    return (
+      <div className="commit-timeline empty muted">
+        Working tree vs <code>{base}</code>
+      </div>
+    );
   }
 
   if (loading && commits.length === 0) {

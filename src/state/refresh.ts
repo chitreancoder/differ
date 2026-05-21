@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { clearBranchCache } from "./branches";
 import { clearCommitsCache } from "./commits";
-import { clearDiffTextCache } from "./diffText";
+import { clearFullDiffCache } from "./fullDiff";
 import { useStore } from "./store";
 
 const inFlight = new Map<string, Promise<void>>();
@@ -10,7 +10,7 @@ const fetchedThisSession = new Set<string>();
 export function refreshAll() {
   clearBranchCache();
   clearCommitsCache();
-  clearDiffTextCache();
+  clearFullDiffCache();
   useStore.getState().bumpRefresh();
 }
 

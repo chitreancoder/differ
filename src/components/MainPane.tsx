@@ -1,9 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useStore } from "../state/store";
-import { useDiffFiles } from "../state/diff";
+import { useDiffFiles, visibleFilePaths } from "../state/diff";
+import { useFullDiff } from "../state/fullDiff";
 import { fetchRemote, refreshAll } from "../state/refresh";
+import { useSystemTheme } from "../theme";
 import { FileTree } from "./FileTree";
-import { DiffPane, type DiffPaneHandle } from "./DiffPane";
+import { CodeViewPane, type CodeViewPaneHandle } from "./CodeViewPane";
 
 export function MainPane() {
   const repos = useStore((s) => s.repos);
@@ -21,6 +23,19 @@ export function MainPane() {
   const currentFilePath = useStore((s) => s.currentFilePath);
   const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
   const setCurrentFiles = useStore((s) => s.setCurrentFiles);
+  const reviewed = useStore((s) => s.reviewed);
+  const collapsedFolders = useStore((s) => s.collapsedFolders);
+  const ensureReviewedScope = useStore((s) => s.ensureReviewedScope);
+  const theme = useSystemTheme();
+  const codeViewRef = useRef<CodeViewPaneHandle>(null);
+
+  const scope = useMemo(
+    () =>
+      activeRepoPath && base && compare
+        ? `${activeRepoPath}|${base}|${compare}|${selectedCommit ?? ""}`
+        : null,
+    [activeRepoPath, base, compare, selectedCommit],
+  );
 
   const { files, loading, error } = useDiffFiles(
     activeRepoPath,
@@ -29,15 +44,39 @@ export function MainPane() {
     selectedCommit,
   );
 
-  const diffPaneRef = useRef<DiffPaneHandle>(null);
+  const {
+    patch,
+    loading: patchLoading,
+    error: patchError,
+  } = useFullDiff(activeRepoPath, base, compare, selectedCommit);
+
+  const selectFile = (path: string) => {
+    setCurrentFilePath(path);
+    codeViewRef.current?.scrollToFile(path);
+  };
 
   useEffect(() => {
-    setCurrentFilePath(null);
-  }, [activeRepoPath, base, compare, selectedCommit, setCurrentFilePath]);
+    ensureReviewedScope(scope);
+  }, [scope, ensureReviewedScope]);
 
   useEffect(() => {
     setCurrentFiles(files);
   }, [files, setCurrentFiles]);
+
+  useEffect(() => {
+    if (files.length === 0) {
+      if (currentFilePath !== null) setCurrentFilePath(null);
+      return;
+    }
+    const stillExists =
+      currentFilePath !== null &&
+      files.some((f) => f.path === currentFilePath);
+    if (!stillExists) {
+      const visible = visibleFilePaths(files, collapsedFolders);
+      const first = visible[0] ?? files[0].path;
+      setCurrentFilePath(first);
+    }
+  }, [files, currentFilePath, collapsedFolders, setCurrentFilePath]);
 
   if (repos.length === 0) {
     return (
@@ -95,6 +134,8 @@ export function MainPane() {
     );
   }
 
+  const combinedError = error ?? patchError;
+
   return (
     <main className="main-pane">
       <div className="file-tree-pane">
@@ -102,17 +143,15 @@ export function MainPane() {
           files={files}
           loading={loading}
           selectedPath={currentFilePath}
-          onSelect={(path) => {
-            setCurrentFilePath(path);
-            diffPaneRef.current?.scrollToFile(path);
-          }}
+          reviewed={reviewed}
+          onSelect={selectFile}
         />
       </div>
       <div className="diff-pane">
-        {error ? (
+        {combinedError ? (
           <div className="empty-card">
             <h2>Diff failed</h2>
-            <p className="muted">{error}</p>
+            <p className="muted">{combinedError}</p>
             <div className="empty-actions">
               <button
                 className="btn-primary"
@@ -125,28 +164,29 @@ export function MainPane() {
               </button>
             </div>
           </div>
-        ) : loading && files.length === 0 ? (
+        ) : (loading || patchLoading) && patch === null ? (
           <div className="empty-card">
             <p className="muted">Loading diff…</p>
           </div>
-        ) : !loading && files.length === 0 ? (
+        ) : !loading && !patchLoading && files.length === 0 ? (
           <div className="empty-card">
             <h2>No changes</h2>
             <p className="muted">
               <code>{base}</code> and <code>{compare}</code> are identical.
             </p>
           </div>
-        ) : (
-          <DiffPane
-            ref={diffPaneRef}
-            files={files}
-            repoPath={activeRepoPath}
-            base={base}
-            compare={compare}
-            selectedCommit={selectedCommit}
+        ) : patch !== null && scope ? (
+          <CodeViewPane
+            ref={codeViewRef}
+            patch={patch}
+            scopeKey={scope}
             diffStyle={diffStyle}
-            onVisibleFileChange={setCurrentFilePath}
+            theme={theme}
           />
+        ) : (
+          <div className="empty-card">
+            <p className="muted">Loading diff…</p>
+          </div>
         )}
       </div>
     </main>

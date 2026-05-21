@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { Command } from "cmdk";
 import { useStore } from "../state/store";
 import { fetchRemote, refreshAll } from "../state/refresh";
-import { fileAnchorId } from "../utils/diff";
 import { pickAndAddRepo } from "../state/repoActions";
 
 export function CommandPalette() {
@@ -42,9 +41,6 @@ export function CommandPalette() {
 
   const jumpToFile = (path: string) => {
     setCurrentFilePath(path);
-    document
-      .getElementById(fileAnchorId(path))
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
     close();
   };
 

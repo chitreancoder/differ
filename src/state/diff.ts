@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { FileEntry } from "../types";
+import { isWorkingTree } from "../types";
 import { useStore } from "./store";
 
 export type TreeNode =
@@ -45,11 +46,16 @@ export function useDiffFiles(
           path: repoPath,
           sha: selectedCommit,
         })
-      : invoke<FileEntry[]>("diff_name_status", {
-          path: repoPath,
-          base,
-          compare,
-        });
+      : isWorkingTree(compare)
+        ? invoke<FileEntry[]>("diff_working_tree_name_status", {
+            path: repoPath,
+            base,
+          })
+        : invoke<FileEntry[]>("diff_name_status", {
+            path: repoPath,
+            base,
+            compare,
+          });
     promise
       .then((list) => {
         if (cancelled) return;
@@ -132,6 +138,19 @@ export type FlatRow = {
   expanded: boolean;
   hasChildren: boolean;
 };
+
+export function visibleFilePaths(
+  files: FileEntry[],
+  collapsed: Set<string>,
+): string[] {
+  const tree = buildTree(files);
+  const rows = flattenTree(tree, collapsed);
+  const out: string[] = [];
+  for (const row of rows) {
+    if (row.node.type === "file") out.push(row.node.path);
+  }
+  return out;
+}
 
 export function flattenTree(
   root: TreeNode,

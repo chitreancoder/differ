@@ -11,7 +11,11 @@ type State = {
   selectedCommit: Record<string, string | null>;
   currentFiles: FileEntry[];
   currentFilePath: string | null;
+  collapsedFolders: Set<string>;
+  reviewed: Set<string>;
+  reviewedScope: string | null;
   paletteOpen: boolean;
+  shortcutsOpen: boolean;
   branchPickerKind: "base" | "compare" | null;
   refreshCounter: number;
   fetchingRepos: Record<string, boolean>;
@@ -33,8 +37,15 @@ type Actions = {
   setSelectedCommit: (repoPath: string, sha: string | null) => void;
   setCurrentFiles: (files: FileEntry[]) => void;
   setCurrentFilePath: (path: string | null) => void;
+  toggleFolder: (path: string) => void;
+  ensureReviewedScope: (scope: string | null) => void;
+  toggleReviewed: (path: string) => void;
+  markAllReviewed: (paths: string[]) => void;
+  clearReviewed: () => void;
   setPaletteOpen: (open: boolean) => void;
   togglePalette: () => void;
+  setShortcutsOpen: (open: boolean) => void;
+  toggleShortcuts: () => void;
   setBranchPickerKind: (kind: "base" | "compare" | null) => void;
   bumpRefresh: () => void;
   setFetching: (repoPath: string, fetching: boolean) => void;
@@ -54,7 +65,11 @@ export const useStore = create<State & Actions>((set) => ({
   selectedCommit: {},
   currentFiles: [],
   currentFilePath: null,
+  collapsedFolders: new Set<string>(),
+  reviewed: new Set<string>(),
+  reviewedScope: null,
   paletteOpen: false,
+  shortcutsOpen: false,
   branchPickerKind: null,
   refreshCounter: 0,
   fetchingRepos: {},
@@ -113,8 +128,36 @@ export const useStore = create<State & Actions>((set) => ({
     set((s) => ({ selectedCommit: { ...s.selectedCommit, [repoPath]: sha } })),
   setCurrentFiles: (files) => set({ currentFiles: files }),
   setCurrentFilePath: (path) => set({ currentFilePath: path }),
+  toggleFolder: (path) =>
+    set((s) => {
+      const next = new Set(s.collapsedFolders);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return { collapsedFolders: next };
+    }),
+  ensureReviewedScope: (scope) =>
+    set((s) =>
+      s.reviewedScope === scope
+        ? s
+        : {
+            reviewedScope: scope,
+            reviewed: new Set<string>(),
+            collapsedFolders: new Set<string>(),
+          },
+    ),
+  toggleReviewed: (path) =>
+    set((s) => {
+      const next = new Set(s.reviewed);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return { reviewed: next };
+    }),
+  markAllReviewed: (paths) => set({ reviewed: new Set(paths) }),
+  clearReviewed: () => set({ reviewed: new Set<string>() }),
   setPaletteOpen: (open) => set({ paletteOpen: open }),
   togglePalette: () => set((s) => ({ paletteOpen: !s.paletteOpen })),
+  setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
+  toggleShortcuts: () => set((s) => ({ shortcutsOpen: !s.shortcutsOpen })),
   setBranchPickerKind: (kind) => set({ branchPickerKind: kind }),
   bumpRefresh: () => set((s) => ({ refreshCounter: s.refreshCounter + 1 })),
   setFetching: (repoPath, fetching) =>

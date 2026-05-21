@@ -12,6 +12,7 @@
   --deleted: #dc2626;
   --modified: #ca8a04;
   --topbar-h: 52px;
+  --statusbar-h: 26px;
   --sidebar-w: 240px;
   --tree-w: 280px;
 
@@ -94,7 +95,7 @@ button:disabled {
 
 .workspace {
   display: grid;
-  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-rows: var(--topbar-h) 1fr auto;
   min-width: 0;
   overflow: hidden;
 }
@@ -194,13 +195,41 @@ button:disabled {
   color: var(--fg);
 }
 
-.refresh-btn {
-  font-size: 16px;
+.btn-fetch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.refresh-btn.spinning {
+.btn-fetch:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.btn-fetch:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.btn-fetch .fetch-icon {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--fg-muted);
+}
+
+.btn-fetch .fetch-icon.spinning {
   animation: spin 0.8s linear infinite;
-  pointer-events: none;
 }
 
 @keyframes spin {
@@ -232,6 +261,14 @@ button:disabled {
   background: var(--bg-hover);
 }
 
+.branch-slot.working-tree {
+  border-style: dashed;
+}
+
+.branch-slot.working-tree > span:last-child {
+  font-style: italic;
+}
+
 .branch-slot .muted {
   font-size: 10px;
   text-transform: uppercase;
@@ -240,13 +277,14 @@ button:disabled {
 
 .commit-timeline {
   flex: 1;
+  align-self: stretch;
   display: flex;
   align-items: center;
   gap: 4px;
   overflow-x: auto;
   overflow-y: hidden;
   min-width: 0;
-  padding: 0 4px;
+  padding: 6px 4px 12px;
   scrollbar-width: thin;
 }
 
@@ -339,6 +377,10 @@ button:disabled {
   grid-template-columns: var(--tree-w) 1fr;
   overflow: hidden;
   min-width: 0;
+  /* Without min-height:0 the grid item expands to its (huge) content height,
+     blowing out the workspace 1fr track so the CodeView scroller never gets a
+     bounded height. */
+  min-height: 0;
 }
 
 .main-pane.empty {
@@ -355,8 +397,23 @@ button:disabled {
 }
 
 .diff-pane {
-  overflow: auto;
+  /* CodeView owns its own virtualized scroll surface, so the pane just needs a
+     bounded box to fill — it must not scroll itself. */
+  overflow: hidden;
   min-width: 0;
+  min-height: 0;
+}
+
+.codeview {
+  height: 100%;
+  /* CodeView uses its own root element as the scroll container (it reads
+     root.scrollTop) but never sets overflow itself — that's our job. */
+  overflow-y: auto;
+  /* Tauri's macOS engine (WKWebView) repaints position:sticky out of sync with
+     overflow scrolling, so the sticky file header flickers / bleeds code text.
+     Promoting the scroller to its own compositor layer makes sticky update
+     atomically with the scroll. */
+  transform: translateZ(0);
 }
 
 .empty-card {
@@ -689,6 +746,16 @@ kbd {
   font-size: 11px;
 }
 
+.picker-item.working-tree .picker-item-name::before {
+  content: "· ";
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.picker-item.working-tree .picker-item-name {
+  font-style: italic;
+}
+
 .picker-item-tag {
   font-size: 10px;
   text-transform: uppercase;
@@ -867,12 +934,9 @@ code {
   border-radius: 3px;
 }
 
-/* Diff pane (list of file diffs) */
-.diff-list {
-  display: flex;
-  flex-direction: column;
+/* Single-file diff pane */
+.diff-pane-inner {
   padding: 12px;
-  gap: 12px;
 }
 
 .file-diff {
@@ -896,21 +960,55 @@ code {
 }
 
 .file-diff-status {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--fg-muted);
-  font-weight: 600;
+  color: white;
+  background: var(--fg-muted);
+  flex-shrink: 0;
 }
 
-.file-diff-path {
+.file-diff-status.added {
+  background: var(--added);
+}
+
+.file-diff-status.modified {
+  background: var(--modified);
+}
+
+.file-diff-status.deleted {
+  background: var(--deleted);
+}
+
+.file-diff-status.renamed,
+.file-diff-status.copied,
+.file-diff-status.unknown {
+  background: var(--fg-muted);
+}
+
+.file-diff-dir {
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
-  flex: 1;
+  color: var(--fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
+}
+
+.file-diff-name {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .file-diff-counts {
@@ -919,11 +1017,26 @@ code {
   font-size: 11px;
   font-family:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
-.file-diff-toggle {
-  width: 22px;
-  height: 22px;
+.file-diff-reviewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  user-select: none;
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.file-diff-reviewed input {
+  accent-color: var(--added);
+  cursor: pointer;
 }
 
 .file-diff-collapsed,
@@ -943,4 +1056,176 @@ code {
 
 .file-diff-body {
   font-size: 12px;
+}
+
+/* File tree — selected + reviewed */
+.filetree-row.file.selected {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-left: 2px solid var(--accent);
+  padding-left: calc(var(--filetree-pl, 8px) - 2px);
+}
+
+.filetree-row.file.reviewed {
+  color: var(--fg-muted);
+}
+
+.filetree-row.file.reviewed .filetree-name {
+  text-decoration: line-through;
+  text-decoration-color: var(--fg-muted);
+}
+
+.filetree-reviewed-mark {
+  font-size: 10px;
+  color: var(--added);
+  flex-shrink: 0;
+}
+
+/* Topbar reviewed progress */
+.topbar-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.topbar-progress-text {
+  font-variant-numeric: tabular-nums;
+}
+
+.topbar-progress-track {
+  width: 70px;
+  height: 4px;
+  background: var(--bg-active);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.topbar-progress-fill {
+  height: 100%;
+  background: var(--added);
+  transition: width 0.18s ease;
+}
+
+/* Status bar */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: var(--statusbar-h);
+  padding: 0 14px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  font-size: 11px;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+}
+
+.statusbar-pos {
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+}
+
+.statusbar-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fg-muted);
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.statusbar-help {
+  cursor: pointer;
+}
+
+.statusbar-help:hover {
+  color: var(--fg);
+}
+
+.statusbar-spacer {
+  flex: 1;
+}
+
+.statusbar-mode {
+  color: var(--fg-muted);
+  font-size: 10.5px;
+  text-transform: lowercase;
+}
+
+.statusbar-kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  line-height: 1.4;
+}
+
+/* Shortcuts cheatsheet modal */
+.shortcuts-modal {
+  width: 460px;
+  max-width: 92vw;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  padding: 20px 24px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.shortcuts-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--fg);
+}
+
+.shortcuts-group {
+  margin-bottom: 14px;
+}
+
+.shortcuts-group:last-child {
+  margin-bottom: 0;
+}
+
+.shortcuts-group-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12.5px;
+}
+
+.shortcuts-label {
+  flex: 1;
+  color: var(--fg);
+}
+
+.shortcuts-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shortcuts-keys kbd {
+  font-size: 11px;
 }

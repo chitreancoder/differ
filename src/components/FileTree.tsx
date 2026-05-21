@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { FileEntry, FileStatus } from "../types";
 import {
@@ -6,6 +6,7 @@ import {
   flattenTree,
   type FlatRow,
 } from "../state/diff";
+import { useStore } from "../state/store";
 
 const ROW_HEIGHT = 24;
 
@@ -13,6 +14,7 @@ type Props = {
   files: FileEntry[];
   loading: boolean;
   selectedPath: string | null;
+  reviewed: Set<string>;
   onSelect: (path: string) => void;
 };
 
@@ -49,8 +51,15 @@ function statusGlyph(status: FileStatus): {
   }
 }
 
-export function FileTree({ files, loading, selectedPath, onSelect }: Props) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+export function FileTree({
+  files,
+  loading,
+  selectedPath,
+  reviewed,
+  onSelect,
+}: Props) {
+  const collapsed = useStore((s) => s.collapsedFolders);
+  const toggleFolder = useStore((s) => s.toggleFolder);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const tree = useMemo(() => buildTree(files), [files]);
@@ -73,14 +82,13 @@ export function FileTree({ files, loading, selectedPath, onSelect }: Props) {
     overscan: 12,
   });
 
-  const toggleFolder = (path: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  };
+  useEffect(() => {
+    if (!selectedPath) return;
+    const idx = rows.findIndex(
+      (r) => r.node.type === "file" && r.node.path === selectedPath,
+    );
+    if (idx >= 0) virtualizer.scrollToIndex(idx, { align: "auto" });
+  }, [selectedPath, rows, virtualizer]);
 
   return (
     <div className="filetree">
@@ -120,6 +128,9 @@ export function FileTree({ files, loading, selectedPath, onSelect }: Props) {
                   <Row
                     row={row}
                     selectedPath={selectedPath}
+                    isReviewed={
+                      row.node.type === "file" && reviewed.has(row.node.path)
+                    }
                     onSelect={onSelect}
                     onToggleFolder={toggleFolder}
                   />
@@ -136,11 +147,13 @@ export function FileTree({ files, loading, selectedPath, onSelect }: Props) {
 function Row({
   row,
   selectedPath,
+  isReviewed,
   onSelect,
   onToggleFolder,
 }: {
   row: FlatRow;
   selectedPath: string | null;
+  isReviewed: boolean;
   onSelect: (path: string) => void;
   onToggleFolder: (path: string) => void;
 }) {
@@ -163,9 +176,18 @@ function Row({
   const glyph = statusGlyph(node.entry.status);
   const isSelected = selectedPath === node.path;
 
+  const classes = [
+    "filetree-row",
+    "file",
+    isSelected ? "selected" : "",
+    isReviewed ? "reviewed" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <button
-      className={`filetree-row file ${isSelected ? "selected" : ""}`}
+      className={classes}
       style={{ paddingLeft: indent + 14 }}
       onClick={() => onSelect(node.path)}
       title={node.entry.status.kind === "renamed" ? glyph.title : node.path}
@@ -186,6 +208,7 @@ function Row({
           </span>
         )}
       {node.entry.isBinary && <span className="filetree-binary muted">bin</span>}
+      {isReviewed && <span className="filetree-reviewed-mark">✓</span>}
     </button>
   );
 }

@@ -8,6 +8,13 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig(async () => ({
   plugins: [react()],
 
+  // @pierre/diffs ships its highlighter worker as an ES module that
+  // code-splits a wasm chunk, so the worker bundle must be "es" (Vite's
+  // default "iife" can't code-split a worker).
+  worker: {
+    format: "es",
+  },
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

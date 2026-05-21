@@ -1,5 +1,6 @@
 import { useStore } from "../state/store";
 import { fetchRemote } from "../state/refresh";
+import { isWorkingTree } from "../types";
 import { CommitTimeline } from "./CommitTimeline";
 
 export function TopBar() {
@@ -18,6 +19,8 @@ export function TopBar() {
   const fetching = useStore((s) =>
     activeRepoPath ? !!s.fetchingRepos[activeRepoPath] : false,
   );
+  const fileCount = useStore((s) => s.currentFiles.length);
+  const reviewedCount = useStore((s) => s.reviewed.size);
 
   if (!activeRepoPath) {
     return (
@@ -44,6 +47,16 @@ export function TopBar() {
         ☰
       </button>
 
+      <button
+        className={`btn-fetch ${fetching ? "fetching" : ""}`}
+        onClick={() => fetchRemote(activeRepoPath)}
+        disabled={fetching}
+        title="Fetch from remote &amp; refresh (⌘R)"
+      >
+        <span className={`fetch-icon ${fetching ? "spinning" : ""}`}>↻</span>
+        <span>{fetching ? "Fetching…" : "Fetch"}</span>
+      </button>
+
       <div className="branch-slots">
         <button
           className="branch-slot"
@@ -56,18 +69,18 @@ export function TopBar() {
         <button
           className="btn-icon"
           onClick={() => swapBranches(activeRepoPath)}
-          disabled={!base || !compare}
+          disabled={!base || !compare || isWorkingTree(base) || isWorkingTree(compare)}
           title="Swap branches"
         >
           ⇄
         </button>
         <button
-          className="branch-slot"
+          className={`branch-slot ${isWorkingTree(compare) ? "working-tree" : ""}`}
           onClick={() => setBranchPickerKind("compare")}
           title="Pick compare branch"
         >
           <span className="muted">compare</span>
-          <span>{compare ?? "—"}</span>
+          <span>{isWorkingTree(compare) ? "working tree" : compare ?? "—"}</span>
         </button>
       </div>
 
@@ -77,14 +90,21 @@ export function TopBar() {
         compare={compare}
       />
 
-      <button
-        className={`btn-icon refresh-btn ${fetching ? "spinning" : ""}`}
-        onClick={() => fetchRemote(activeRepoPath)}
-        disabled={fetching}
-        title="Fetch &amp; refresh (⌘R)"
-      >
-        ↻
-      </button>
+      {fileCount > 0 && (
+        <div className="topbar-progress" title={`${reviewedCount} of ${fileCount} files reviewed`}>
+          <span className="topbar-progress-text">
+            {reviewedCount}/{fileCount}
+          </span>
+          <div className="topbar-progress-track">
+            <div
+              className="topbar-progress-fill"
+              style={{
+                width: `${fileCount === 0 ? 0 : (reviewedCount / fileCount) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="topbar-tools">
         <button

@@ -48,3 +48,9 @@ export type FileEntry = {
 };
 
 export type DiffStyle = "split" | "unified";
+
+export const WORKING_TREE_REF = ":working-tree";
+
+export function isWorkingTree(ref: string | null): boolean {
+  return ref === WORKING_TREE_REF;
+}
