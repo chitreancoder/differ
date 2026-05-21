@@ -1,10 +1,11 @@
 import { create } from "zustand";
-import type { DiffStyle, FileEntry, Repo, Toast } from "../types";
+import type { DiffStyle, FileEntry, Repo, ReviewComment, Toast } from "../types";
 
 type State = {
   repos: Repo[];
   activeRepoPath: string | null;
   sidebarCollapsed: boolean;
+  treeWidth: number;
   diffStyle: DiffStyle;
   base: Record<string, string>;
   compare: Record<string, string>;
@@ -20,6 +21,8 @@ type State = {
   refreshCounter: number;
   fetchingRepos: Record<string, boolean>;
   toasts: Toast[];
+  commentMode: boolean;
+  comments: Record<string, ReviewComment[]>;
   hydrated: boolean;
 };
 
@@ -29,6 +32,7 @@ type Actions = {
   removeRepo: (path: string) => void;
   setActiveRepo: (path: string | null) => void;
   toggleSidebar: () => void;
+  setTreeWidth: (width: number) => void;
   setDiffStyle: (style: DiffStyle) => void;
   toggleDiffStyle: () => void;
   setBase: (repoPath: string, branch: string) => void;
@@ -51,6 +55,16 @@ type Actions = {
   setFetching: (repoPath: string, fetching: boolean) => void;
   pushToast: (message: string, kind?: "error" | "info") => void;
   dismissToast: (id: number) => void;
+  toggleCommentMode: () => void;
+  setCommentMode: (on: boolean) => void;
+  addComment: (scope: string, comment: ReviewComment) => void;
+  updateComment: (
+    scope: string,
+    id: string,
+    patch: Partial<ReviewComment>,
+  ) => void;
+  removeComment: (scope: string, id: string) => void;
+  markCommentsSent: (scope: string, ids: string[]) => void;
 };
 
 let toastSeq = 0;
@@ -59,6 +73,7 @@ export const useStore = create<State & Actions>((set) => ({
   repos: [],
   activeRepoPath: null,
   sidebarCollapsed: false,
+  treeWidth: 280,
   diffStyle: "split",
   base: {},
   compare: {},
@@ -74,6 +89,8 @@ export const useStore = create<State & Actions>((set) => ({
   refreshCounter: 0,
   fetchingRepos: {},
   toasts: [],
+  commentMode: false,
+  comments: {},
   hydrated: false,
 
   hydrate: (data) => set((s) => ({ ...s, ...data, hydrated: true })),
@@ -100,6 +117,8 @@ export const useStore = create<State & Actions>((set) => ({
     }),
   setActiveRepo: (path) => set({ activeRepoPath: path, currentFilePath: null }),
   toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  setTreeWidth: (width) =>
+    set({ treeWidth: Math.max(180, Math.min(640, Math.round(width))) }),
   setDiffStyle: (style) => set({ diffStyle: style }),
   toggleDiffStyle: () =>
     set((s) => ({ diffStyle: s.diffStyle === "split" ? "unified" : "split" })),
@@ -174,4 +193,49 @@ export const useStore = create<State & Actions>((set) => ({
     }),
   dismissToast: (id) =>
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
+  toggleCommentMode: () => set((s) => ({ commentMode: !s.commentMode })),
+  setCommentMode: (on) => set({ commentMode: on }),
+  addComment: (scope, comment) =>
+    set((s) => ({
+      comments: {
+        ...s.comments,
+        [scope]: [...(s.comments[scope] ?? []), comment],
+      },
+    })),
+  updateComment: (scope, id, patch) =>
+    set((s) => {
+      const bucket = s.comments[scope];
+      if (!bucket) return s;
+      return {
+        comments: {
+          ...s.comments,
+          [scope]: bucket.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        },
+      };
+    }),
+  removeComment: (scope, id) =>
+    set((s) => {
+      const bucket = s.comments[scope];
+      if (!bucket) return s;
+      const next = bucket.filter((c) => c.id !== id);
+      const comments = { ...s.comments };
+      // Light pruning: drop scope buckets once empty.
+      if (next.length === 0) delete comments[scope];
+      else comments[scope] = next;
+      return { comments };
+    }),
+  markCommentsSent: (scope, ids) =>
+    set((s) => {
+      const bucket = s.comments[scope];
+      if (!bucket) return s;
+      const idSet = new Set(ids);
+      return {
+        comments: {
+          ...s.comments,
+          [scope]: bucket.map((c) =>
+            idSet.has(c.id) ? { ...c, sent: true } : c,
+          ),
+        },
+      };
+    }),
 }));

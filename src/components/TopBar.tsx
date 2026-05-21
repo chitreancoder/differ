@@ -15,6 +15,8 @@ export function TopBar() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const diffStyle = useStore((s) => s.diffStyle);
   const setDiffStyle = useStore((s) => s.setDiffStyle);
+  const commentMode = useStore((s) => s.commentMode);
+  const toggleCommentMode = useStore((s) => s.toggleCommentMode);
   const setBranchPickerKind = useStore((s) => s.setBranchPickerKind);
   const fetching = useStore((s) =>
     activeRepoPath ? !!s.fetchingRepos[activeRepoPath] : false,
@@ -107,6 +109,13 @@ export function TopBar() {
       )}
 
       <div className="topbar-tools">
+        <button
+          className={`btn-toggle btn-comment-mode ${commentMode ? "active" : ""}`}
+          onClick={() => toggleCommentMode()}
+          title="Toggle comment mode (c) — drag-select lines to leave a review note"
+        >
+          💬
+        </button>
         <button
           className={`btn-toggle ${diffStyle === "split" ? "active" : ""}`}
           onClick={() => setDiffStyle("split")}

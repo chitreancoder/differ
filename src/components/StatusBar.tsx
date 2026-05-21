@@ -1,4 +1,10 @@
 import { useStore } from "../state/store";
+import { exportForClaude } from "../state/review";
+import type { ReviewComment } from "../types";
+
+// Stable empty reference: returning a fresh `[]` from a useStore selector makes
+// useSyncExternalStore see a new snapshot every render → infinite update loop.
+const EMPTY_COMMENTS: ReviewComment[] = [];
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return <span className="statusbar-kbd">{children}</span>;
@@ -9,6 +15,43 @@ export function StatusBar() {
   const currentFilePath = useStore((s) => s.currentFilePath);
   const diffStyle = useStore((s) => s.diffStyle);
   const toggleShortcuts = useStore((s) => s.toggleShortcuts);
+  const commentMode = useStore((s) => s.commentMode);
+  const activeRepoPath = useStore((s) => s.activeRepoPath);
+  const base = useStore((s) =>
+    activeRepoPath ? s.base[activeRepoPath] ?? null : null,
+  );
+  const compare = useStore((s) =>
+    activeRepoPath ? s.compare[activeRepoPath] ?? null : null,
+  );
+  const selectedCommit = useStore((s) =>
+    activeRepoPath ? s.selectedCommit[activeRepoPath] ?? null : null,
+  );
+  const scope =
+    activeRepoPath && base && compare
+      ? `${activeRepoPath}|${base}|${compare}|${selectedCommit ?? ""}`
+      : null;
+  const scopeComments =
+    useStore((s) => (scope ? s.comments[scope] : undefined)) ?? EMPTY_COMMENTS;
+
+  const handleExport = async () => {
+    const store = useStore.getState();
+    if (!scope || !activeRepoPath || scopeComments.length === 0) return;
+    const repo = store.repos.find((r) => r.path === activeRepoPath);
+    const repoName = repo?.name ?? activeRepoPath;
+    try {
+      await exportForClaude(activeRepoPath, scopeComments);
+      store.markCommentsSent(
+        scope,
+        scopeComments.map((c) => c.id),
+      );
+      store.pushToast(
+        `Copied review for ${repoName} + wrote .differ/review.md`,
+        "info",
+      );
+    } catch (e) {
+      store.pushToast(`Export failed: ${e}`, "error");
+    }
+  };
 
   if (files.length === 0) return null;
 
@@ -44,7 +87,21 @@ export function StatusBar() {
       >
         <Kbd>?</Kbd> shortcuts
       </button>
+      <span className="statusbar-hint">
+        <Kbd>c</Kbd> comment
+      </span>
       <span className="statusbar-spacer" />
+      {scopeComments.length > 0 && (
+        <button
+          className="statusbar-export"
+          onClick={handleExport}
+          title="Copy a review prompt for Claude & write .differ/review.md"
+        >
+          {scopeComments.length} comment
+          {scopeComments.length === 1 ? "" : "s"} · Export for Claude
+        </button>
+      )}
+      {commentMode && <span className="statusbar-comment-active">comment mode</span>}
       <span className="statusbar-mode">
         {diffStyle === "split" ? "split" : "inline"}
       </span>

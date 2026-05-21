@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { FileEntry, FileStatus } from "../types";
 import {
@@ -7,9 +7,10 @@ import {
   type FlatRow,
 } from "../state/diff";
 import { useStore } from "../state/store";
-import { fileIconUrl } from "../utils/fileIcon";
+import { fileIconUrl, folderIconUrl } from "../utils/fileIcon";
 
 const ROW_HEIGHT = 24;
+const EMPTY_COLLAPSE = new Set<string>();
 
 type Props = {
   files: FileEntry[];
@@ -62,9 +63,20 @@ export function FileTree({
   const collapsed = useStore((s) => s.collapsedFolders);
   const toggleFolder = useStore((s) => s.toggleFolder);
   const parentRef = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
 
-  const tree = useMemo(() => buildTree(files), [files]);
-  const rows = useMemo(() => flattenTree(tree, collapsed), [tree, collapsed]);
+  const trimmedQuery = query.trim().toLowerCase();
+  const filteredFiles = useMemo(() => {
+    if (!trimmedQuery) return files;
+    return files.filter((f) => f.path.toLowerCase().includes(trimmedQuery));
+  }, [files, trimmedQuery]);
+
+  const tree = useMemo(() => buildTree(filteredFiles), [filteredFiles]);
+  // While filtering, ignore collapsed state so every match is visible.
+  const rows = useMemo(
+    () => flattenTree(tree, trimmedQuery ? EMPTY_COLLAPSE : collapsed),
+    [tree, collapsed, trimmedQuery],
+  );
 
   const totals = useMemo(() => {
     let additions = 0;
@@ -95,9 +107,11 @@ export function FileTree({
     <div className="filetree">
       <div className="filetree-header">
         <span className="filetree-count">
-          {files.length} {files.length === 1 ? "file" : "files"}
+          {trimmedQuery
+            ? `${filteredFiles.length} of ${files.length}`
+            : `${files.length} ${files.length === 1 ? "file" : "files"}`}
         </span>
-        {(totals.additions > 0 || totals.deletions > 0) && (
+        {!trimmedQuery && (totals.additions > 0 || totals.deletions > 0) && (
           <span className="filetree-totals">
             <span className="counts-add">+{totals.additions}</span>{" "}
             <span className="counts-del">−{totals.deletions}</span>
@@ -105,8 +119,40 @@ export function FileTree({
         )}
         {loading && <span className="muted filetree-loading">…</span>}
       </div>
+      {files.length > 0 && (
+        <div className="filetree-search">
+          <input
+            type="text"
+            className="filetree-search-input"
+            placeholder="Filter files…"
+            value={query}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && query) {
+                e.stopPropagation();
+                setQuery("");
+              }
+            }}
+          />
+          {query && (
+            <button
+              className="filetree-search-clear"
+              onClick={() => setQuery("")}
+              title="Clear filter"
+              aria-label="Clear filter"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
       {!loading && files.length === 0 ? (
         <div className="filetree-empty muted">No files changed</div>
+      ) : trimmedQuery && filteredFiles.length === 0 ? (
+        <div className="filetree-empty muted">No files match “{query.trim()}”</div>
       ) : (
         <div ref={parentRef} className="filetree-scroll">
           <div
@@ -169,6 +215,13 @@ function Row({
         onClick={() => onToggleFolder(node.path)}
       >
         <span className="filetree-chevron">{row.expanded ? "▾" : "▸"}</span>
+        <img
+          className="filetree-icon"
+          src={folderIconUrl(node.name, row.expanded)}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+        />
         <span className="filetree-name">{node.name}</span>
       </button>
     );

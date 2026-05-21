@@ -1,8 +1,14 @@
 import { useEffect, useRef } from "react";
 import { Command } from "cmdk";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { useStore } from "../state/store";
 import { fetchRemote, refreshAll } from "../state/refresh";
 import { pickAndAddRepo } from "../state/repoActions";
+import {
+  claudeCommandStatus,
+  exportForClaude,
+  setupClaudeCommand,
+} from "../state/review";
 
 export function CommandPalette() {
   const open = useStore((s) => s.paletteOpen);
@@ -14,6 +20,7 @@ export function CommandPalette() {
   const setBranchPickerKind = useStore((s) => s.setBranchPickerKind);
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const toggleDiffStyle = useStore((s) => s.toggleDiffStyle);
+  const toggleCommentMode = useStore((s) => s.toggleCommentMode);
   const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +49,59 @@ export function CommandPalette() {
   const jumpToFile = (path: string) => {
     setCurrentFilePath(path);
     close();
+  };
+
+  const activeScope = () => {
+    const s = useStore.getState();
+    const repoPath = s.activeRepoPath;
+    if (!repoPath) return null;
+    const b = s.base[repoPath];
+    const c = s.compare[repoPath];
+    if (!b || !c) return null;
+    const commit = s.selectedCommit[repoPath] ?? "";
+    return `${repoPath}|${b}|${c}|${commit}`;
+  };
+
+  const exportComments = async () => {
+    const s = useStore.getState();
+    const scope = activeScope();
+    const repoPath = s.activeRepoPath;
+    if (!scope || !repoPath) return;
+    const comments = s.comments[scope] ?? [];
+    if (comments.length === 0) {
+      s.pushToast("No comments to export.", "info");
+      return;
+    }
+    const repoName =
+      s.repos.find((r) => r.path === repoPath)?.name ?? repoPath;
+    try {
+      await exportForClaude(repoPath, comments);
+      s.markCommentsSent(scope, comments.map((c) => c.id));
+      s.pushToast(
+        `Copied review for ${repoName} + wrote .differ/review.md`,
+        "info",
+      );
+    } catch (e) {
+      s.pushToast(`Export failed: ${e}`, "error");
+    }
+  };
+
+  const installClaudeCommand = async () => {
+    const s = useStore.getState();
+    const exists = await claudeCommandStatus().catch(() => false);
+    const ok = await ask(
+      exists
+        ? "Overwrite the existing ~/.claude/commands/differ-review.md slash command?"
+        : "Install the /differ-review slash command at ~/.claude/commands/differ-review.md?",
+      { title: "Set up Claude command", kind: "info" },
+    );
+    if (!ok) return;
+    try {
+      const path = await setupClaudeCommand();
+      s.pushToast(`Installed /differ-review (${path})`, "info");
+    } catch (e) {
+      s.pushToast(`Setup failed: ${e}`, "error");
+    }
   };
 
   return (
@@ -103,6 +163,33 @@ export function CommandPalette() {
               >
                 Toggle sidebar{" "}
                 <span className="palette-shortcut">⌘\</span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => {
+                  toggleCommentMode();
+                  close();
+                }}
+              >
+                Toggle comment mode{" "}
+                <span className="palette-shortcut">c</span>
+              </Command.Item>
+              {activeRepoPath && (
+                <Command.Item
+                  onSelect={() => {
+                    exportComments();
+                    close();
+                  }}
+                >
+                  Export comments for Claude
+                </Command.Item>
+              )}
+              <Command.Item
+                onSelect={() => {
+                  installClaudeCommand();
+                  close();
+                }}
+              >
+                Set up Claude command (/differ-review)
               </Command.Item>
               <Command.Item
                 onSelect={() => {

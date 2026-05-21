@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useStore } from "../state/store";
 import { useDiffFiles, visibleFilePaths } from "../state/diff";
 import { useFullDiff } from "../state/fullDiff";
@@ -6,6 +6,8 @@ import { fetchRemote, refreshAll } from "../state/refresh";
 import { useSystemTheme } from "../theme";
 import { FileTree } from "./FileTree";
 import { CodeViewPane, type CodeViewPaneHandle } from "./CodeViewPane";
+
+const NO_COLLAPSE = new Set<string>();
 
 export function MainPane() {
   const repos = useStore((s) => s.repos);
@@ -26,8 +28,36 @@ export function MainPane() {
   const reviewed = useStore((s) => s.reviewed);
   const collapsedFolders = useStore((s) => s.collapsedFolders);
   const ensureReviewedScope = useStore((s) => s.ensureReviewedScope);
+  const commentMode = useStore((s) => s.commentMode);
+  const allComments = useStore((s) => s.comments);
+  const addComment = useStore((s) => s.addComment);
+  const updateComment = useStore((s) => s.updateComment);
+  const removeComment = useStore((s) => s.removeComment);
+  const treeWidth = useStore((s) => s.treeWidth);
+  const setTreeWidth = useStore((s) => s.setTreeWidth);
   const theme = useSystemTheme();
   const codeViewRef = useRef<CodeViewPaneHandle>(null);
+  const mainRef = useRef<HTMLElement>(null);
+
+  const startResize = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = treeWidth;
+      const onMove = (ev: MouseEvent) => {
+        setTreeWidth(startW + (ev.clientX - startX));
+      };
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+        document.body.classList.remove("resizing-col");
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+      document.body.classList.add("resizing-col");
+    },
+    [treeWidth, setTreeWidth],
+  );
 
   const scope = useMemo(
     () =>
@@ -49,6 +79,21 @@ export function MainPane() {
     loading: patchLoading,
     error: patchError,
   } = useFullDiff(activeRepoPath, base, compare, selectedCommit);
+
+  const fileOrder = useMemo(
+    () => visibleFilePaths(files, NO_COLLAPSE),
+    [files],
+  );
+
+  const scopeComments = useMemo(
+    () => (scope ? allComments[scope] ?? [] : []),
+    [scope, allComments],
+  );
+
+  const binaryFiles = useMemo(
+    () => new Set(files.filter((f) => f.isBinary).map((f) => f.path)),
+    [files],
+  );
 
   const selectFile = (path: string) => {
     setCurrentFilePath(path);
@@ -137,7 +182,11 @@ export function MainPane() {
   const combinedError = error ?? patchError;
 
   return (
-    <main className="main-pane">
+    <main
+      className="main-pane"
+      ref={mainRef}
+      style={{ gridTemplateColumns: `${treeWidth}px 1fr` }}
+    >
       <div className="file-tree-pane">
         <FileTree
           files={files}
@@ -147,6 +196,15 @@ export function MainPane() {
           onSelect={selectFile}
         />
       </div>
+      <div
+        className="col-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        onMouseDown={startResize}
+        onDoubleClick={() => setTreeWidth(280)}
+        title="Drag to resize · double-click to reset"
+        style={{ left: `${treeWidth}px` }}
+      />
       <div className="diff-pane">
         {combinedError ? (
           <div className="empty-card">
@@ -180,8 +238,15 @@ export function MainPane() {
             ref={codeViewRef}
             patch={patch}
             scopeKey={scope}
+            fileOrder={fileOrder}
             diffStyle={diffStyle}
             theme={theme}
+            commentMode={commentMode}
+            comments={scopeComments}
+            binaryFiles={binaryFiles}
+            onAddComment={(c) => addComment(scope, c)}
+            onUpdateComment={(id, patch) => updateComment(scope, id, patch)}
+            onRemoveComment={(id) => removeComment(scope, id)}
           />
         ) : (
           <div className="empty-card">

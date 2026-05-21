@@ -140,6 +140,12 @@ export function useShortcuts() {
         return;
       }
 
+      if (lower === "c") {
+        e.preventDefault();
+        store.toggleCommentMode();
+        return;
+      }
+
       if (e.key === "?") {
         e.preventDefault();
         store.toggleShortcuts();

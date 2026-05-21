@@ -1,6 +1,6 @@
 import { Store } from "@tauri-apps/plugin-store";
 import { invoke } from "@tauri-apps/api/core";
-import type { DiffStyle, Repo } from "../types";
+import type { DiffStyle, Repo, ReviewComment } from "../types";
 import { useStore } from "./store";
 
 const STORE_FILE = "differ.json";
@@ -15,9 +15,12 @@ type Persisted = {
   repos: Repo[];
   activeRepoPath: string | null;
   sidebarCollapsed: boolean;
+  treeWidth: number;
   diffStyle: DiffStyle;
   base: Record<string, string>;
   compare: Record<string, string>;
+  commentMode: boolean;
+  comments: Record<string, ReviewComment[]>;
 };
 
 export async function loadPersisted(): Promise<void> {
@@ -29,9 +32,13 @@ export async function loadPersisted(): Promise<void> {
   }));
   const activeRepoPath = (await store.get<string | null>("activeRepoPath")) ?? null;
   const sidebarCollapsed = (await store.get<boolean>("sidebarCollapsed")) ?? false;
+  const treeWidth = (await store.get<number>("treeWidth")) ?? 280;
   const diffStyle = (await store.get<DiffStyle>("diffStyle")) ?? "split";
   const base = (await store.get<Record<string, string>>("base")) ?? {};
   const compare = (await store.get<Record<string, string>>("compare")) ?? {};
+  const commentMode = (await store.get<boolean>("commentMode")) ?? false;
+  const comments =
+    (await store.get<Record<string, ReviewComment[]>>("comments")) ?? {};
 
   // Validate each repo silently in parallel; mark missing if open fails.
   await Promise.all(
@@ -51,9 +58,12 @@ export async function loadPersisted(): Promise<void> {
       ? activeRepoPath
       : (repos[0]?.path ?? null),
     sidebarCollapsed,
+    treeWidth,
     diffStyle,
     base,
     compare,
+    commentMode,
+    comments,
   });
 }
 
@@ -72,9 +82,12 @@ export function startPersistSubscription(): () => void {
     await store.set("repos", cleanRepos);
     await store.set("activeRepoPath", state.activeRepoPath);
     await store.set("sidebarCollapsed", state.sidebarCollapsed);
+    await store.set("treeWidth", state.treeWidth);
     await store.set("diffStyle", state.diffStyle);
     await store.set("base", state.base);
     await store.set("compare", state.compare);
+    await store.set("commentMode", state.commentMode);
+    await store.set("comments", state.comments);
     await store.save();
   };
 
@@ -84,17 +97,23 @@ export function startPersistSubscription(): () => void {
       s.repos !== prev.repos ||
       s.activeRepoPath !== prev.activeRepoPath ||
       s.sidebarCollapsed !== prev.sidebarCollapsed ||
+      s.treeWidth !== prev.treeWidth ||
       s.diffStyle !== prev.diffStyle ||
       s.base !== prev.base ||
-      s.compare !== prev.compare;
+      s.compare !== prev.compare ||
+      s.commentMode !== prev.commentMode ||
+      s.comments !== prev.comments;
     if (!relevantChanged) return;
     pendingState = {
       repos: s.repos,
       activeRepoPath: s.activeRepoPath,
       sidebarCollapsed: s.sidebarCollapsed,
+      treeWidth: s.treeWidth,
       diffStyle: s.diffStyle,
       base: s.base,
       compare: s.compare,
+      commentMode: s.commentMode,
+      comments: s.comments,
     };
     if (!saveScheduled) {
       saveScheduled = true;
