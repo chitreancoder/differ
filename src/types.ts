@@ -49,6 +49,16 @@ export type FileEntry = {
 
 export type DiffStyle = "split" | "unified";
 
+export type ReviewComment = {
+  id: string; // crypto.randomUUID()
+  file: string; // == CodeView item id / file path
+  range: { start: number; end: number; side: "old" | "new" };
+  snippet: string; // code text captured at creation
+  body: string; // freeform note
+  createdAt: number;
+  sent: boolean; // set true on export; reset to false if body edited
+};
+
 export const WORKING_TREE_REF = ":working-tree";
 
 export function isWorkingTree(ref: string | null): boolean {
