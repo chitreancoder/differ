@@ -7,6 +7,7 @@ import {
   type FlatRow,
 } from "../state/diff";
 import { useStore } from "../state/store";
+import { fileIconUrl } from "../utils/fileIcon";
 
 const ROW_HEIGHT = 24;
 
@@ -188,13 +189,17 @@ function Row({
   return (
     <button
       className={classes}
-      style={{ paddingLeft: indent + 14 }}
+      style={{ paddingLeft: indent + 4 }}
       onClick={() => onSelect(node.path)}
       title={node.entry.status.kind === "renamed" ? glyph.title : node.path}
     >
-      <span className={`filetree-status ${glyph.className}`}>
-        {glyph.letter}
-      </span>
+      <img
+        className="filetree-icon"
+        src={fileIconUrl(node.name)}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+      />
       <span className="filetree-name">{node.name}</span>
       {!node.entry.isBinary &&
         (node.entry.additions > 0 || node.entry.deletions > 0) && (
@@ -209,6 +214,12 @@ function Row({
         )}
       {node.entry.isBinary && <span className="filetree-binary muted">bin</span>}
       {isReviewed && <span className="filetree-reviewed-mark">✓</span>}
+      <span
+        className={`filetree-status ${glyph.className}`}
+        title={glyph.title}
+      >
+        {glyph.letter}
+      </span>
     </button>
   );
 }
