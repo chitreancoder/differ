@@ -1,6 +1,11 @@
+/**
+ * Pure utilities for review comments: snippet truncation and the
+ * Claude-Code export formatter. No store wiring — kept side-effect-free so
+ * tests can exercise it without mocking Zustand.
+ */
 import { invoke } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import type { ReviewComment } from "../types";
+import type { ReviewComment } from "@/types";
 
 const MAX_SNIPPET_LINES = 40;
 

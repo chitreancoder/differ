@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useStore } from "../state/store";
-import { useDiffFiles, visibleFilePaths } from "../state/diff";
-import { useFullDiff } from "../state/fullDiff";
-import { fetchRemote, refreshAll } from "../state/refresh";
-import { useEffectiveTheme } from "../theme";
-import { FileTree } from "./FileTree";
-import { CodeViewPane, type CodeViewPaneHandle } from "./CodeViewPane";
-import { Welcome } from "./Welcome";
+import { useStore } from "@/state/store";
+import { useDiffFiles, visibleFilePaths } from "@/state/diff";
+import { useFullDiff } from "@/state/fullDiff";
+import { fetchRemote, refreshAll } from "@/state/refresh";
+import { useEffectiveTheme } from "@/theme";
+import { FileTree } from "@/components/FileTree";
+import {
+  CodeViewPanel,
+  type CodeViewPanelHandle,
+} from "@/components/CodeViewPanel";
+import { Welcome } from "@/components/Welcome";
 
 const NO_COLLAPSE = new Set<string>();
 
-export function MainPane() {
+export function MainPanel() {
   const repos = useStore((s) => s.repos);
   const activeRepoPath = useStore((s) => s.activeRepoPath);
   const base = useStore((s) =>
@@ -37,7 +40,7 @@ export function MainPane() {
   const treeWidth = useStore((s) => s.treeWidth);
   const setTreeWidth = useStore((s) => s.setTreeWidth);
   const theme = useEffectiveTheme();
-  const codeViewRef = useRef<CodeViewPaneHandle>(null);
+  const codeViewRef = useRef<CodeViewPanelHandle>(null);
   const mainRef = useRef<HTMLElement>(null);
 
   const startResize = useCallback(
@@ -254,7 +257,7 @@ export function MainPane() {
             </p>
           </div>
         ) : patch !== null && scope ? (
-          <CodeViewPane
+          <CodeViewPanel
             ref={codeViewRef}
             patch={patch}
             scopeKey={scope}

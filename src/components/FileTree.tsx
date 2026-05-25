@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { FileEntry, FileStatus } from "../types";
+import type { FileEntry, FileStatus } from "@/types";
 import {
   buildTree,
   flattenTree,
   type FlatRow,
-} from "../state/diff";
-import { useStore } from "../state/store";
-import { fileIconUrl, folderIconUrl } from "../utils/fileIcon";
+} from "@/state/diff";
+import { useStore } from "@/state/store";
+import { fileIconUrl, folderIconUrl } from "@/utils/fileIcon";
 
 const ROW_HEIGHT = 24;
 const EMPTY_COLLAPSE = new Set<string>();

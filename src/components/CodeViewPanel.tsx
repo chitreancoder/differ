@@ -20,14 +20,14 @@ import {
   type FileDiffMetadata,
   type SelectionSide,
 } from "@pierre/diffs";
-import type { DiffStyle, ReviewComment } from "../types";
-import type { Theme } from "../theme";
-import { poolOptions, highlighterOptions } from "../diffs/workerPool";
-import { truncateSnippet } from "../state/review";
-import { useStore } from "../state/store";
-import { DiffSearch } from "./DiffSearch";
-import { relativeTimeFromMs } from "../utils/time";
-import { nameInitials } from "../utils/avatar";
+import type { DiffStyle, ReviewComment } from "@/types";
+import type { Theme } from "@/theme";
+import { poolOptions, highlighterOptions } from "@/diffs/workerPool";
+import { truncateSnippet } from "@/state/review";
+import { useStore } from "@/state/store";
+import { DiffSearch } from "@/components/DiffSearch";
+import { relativeTimeFromMs } from "@/utils/time";
+import { nameInitials } from "@/utils/avatar";
 
 /**
  * Injected *into each file's Shadow DOM* via the `unsafeCSS` option — plain
@@ -52,7 +52,7 @@ function shadowCSS(commentMode: boolean): string {
   ].join("");
 }
 
-export type CodeViewPaneHandle = {
+export type CodeViewPanelHandle = {
   scrollToFile: (path: string) => void;
 };
 
@@ -252,8 +252,8 @@ type Props = {
   onVisibleFileChange?: (path: string) => void;
 };
 
-export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
-  function CodeViewPane(
+export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
+  function CodeViewPanel(
     {
       patch,
       scopeKey,

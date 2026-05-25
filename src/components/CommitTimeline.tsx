@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useCommits } from "../state/commits";
-import { useStore } from "../state/store";
-import { isWorkingTree, type Commit, type FileEntry } from "../types";
-import { relativeTimeFromSeconds } from "../utils/time";
-import { nameInitials } from "../utils/avatar";
+import { useCommits } from "@/state/commits";
+import { useStore } from "@/state/store";
+import { isWorkingTree, type Commit, type FileEntry } from "@/types";
+import { relativeTimeFromSeconds } from "@/utils/time";
+import { nameInitials } from "@/utils/avatar";
 
 const TOOLTIP_DELAY_MS = 200;
 const TOOLTIP_WIDTH = 400;

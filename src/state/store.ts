@@ -1,3 +1,9 @@
+/**
+ * Central Zustand store. UI state (active repo, branch selections, comment
+ * drafts, modals) lives here; data fetched from the Rust side (branches,
+ * commits, diffs) is cached in the per-domain hook modules (state/branches.ts,
+ * state/commits.ts, state/diff.ts, state/fullDiff.ts) and not duplicated here.
+ */
 import { create } from "zustand";
 import type {
   DiffStyle,
@@ -6,7 +12,7 @@ import type {
   ReviewComment,
   ThemePreference,
   Toast,
-} from "../types";
+} from "@/types";
 
 type State = {
   repos: Repo[];

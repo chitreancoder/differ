@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useStore } from "../state/store";
-import type { ThemePreference } from "../types";
+import { useStore } from "@/state/store";
+import type { ThemePreference } from "@/types";
 
 const THEME_CHOICES: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "Auto" },
@@ -15,7 +15,7 @@ const THEME_CHOICES: { value: ThemePreference; label: string }[] = [
  * shortcuts and command-palette entries are unchanged — the menu is just an
  * additional discovery surface.
  */
-export function SettingsMenu() {
+export function SettingsPanel() {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);

@@ -1,7 +1,13 @@
+/**
+ * Hydration + serialization for the durable subset of the Zustand store
+ * (repos, branch selections, view prefs, comments). Backed by
+ * tauri-plugin-store. Transient fields (`reviewed`, modals, search query) are
+ * intentionally not persisted — see `Persisted` below for the full set.
+ */
 import { Store } from "@tauri-apps/plugin-store";
 import { invoke } from "@tauri-apps/api/core";
-import type { DiffStyle, Repo, ReviewComment, ThemePreference } from "../types";
-import { useStore } from "./store";
+import type { DiffStyle, Repo, ReviewComment, ThemePreference } from "@/types";
+import { useStore } from "@/state/store";
 
 const STORE_FILE = "differ.json";
 let storePromise: Promise<Store> | null = null;

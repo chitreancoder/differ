@@ -1,4 +1,4 @@
-import { useStore } from "../state/store";
+import { useStore } from "@/state/store";
 
 const GROUPS: Array<[string, Array<[string, string]>]> = [
   [
@@ -35,7 +35,7 @@ const GROUPS: Array<[string, Array<[string, string]>]> = [
   ],
 ];
 
-export function ShortcutsHelp() {
+export function ShortcutsModal() {
   const open = useStore((s) => s.shortcutsOpen);
   const setOpen = useStore((s) => s.setShortcutsOpen);
   if (!open) return null;

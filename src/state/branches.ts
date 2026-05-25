@@ -1,7 +1,11 @@
+/**
+ * `useBranches` — local + remote branch list for a repo. Module-level cache
+ * shared with the BranchPickerModal and command palette.
+ */
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Branch } from "../types";
-import { useStore } from "./store";
+import type { Branch } from "@/types";
+import { useStore } from "@/state/store";
 
 const cache = new Map<string, Branch[]>();
 

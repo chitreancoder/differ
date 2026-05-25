@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { pickAndAddRepo, addRepoByPath } from "../state/repoActions";
-import { useStore } from "../state/store";
-import iconUrl from "../assets/icon.png";
+import { pickAndAddRepo, addRepoByPath } from "@/state/repoActions";
+import { useStore } from "@/state/store";
+import iconUrl from "@/assets/icon.png";
 
 /**
  * First-run / no-repos landing screen. Communicates what Differ is (one

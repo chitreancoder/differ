@@ -1,7 +1,12 @@
+/**
+ * Façade for adding repos. Wraps `validate_repo` (and `init_repo` as a
+ * fallback for non-git folders) and folds the result into the store. The
+ * components only need to call `pickAndAddRepo()` or `addRepoByPath(path)`.
+ */
 import { ask, open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
-import type { Repo } from "../types";
-import { useStore } from "./store";
+import type { Repo } from "@/types";
+import { useStore } from "@/state/store";
 
 export async function pickAndAddRepo(): Promise<void> {
   const picked = await open({ directory: true, multiple: false });

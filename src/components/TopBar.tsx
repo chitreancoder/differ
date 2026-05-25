@@ -1,8 +1,8 @@
-import { useStore } from "../state/store";
-import { fetchRemote } from "../state/refresh";
-import { isWorkingTree } from "../types";
-import { CommitTimeline } from "./CommitTimeline";
-import { SettingsMenu } from "./SettingsMenu";
+import { useStore } from "@/state/store";
+import { fetchRemote } from "@/state/refresh";
+import { isWorkingTree } from "@/types";
+import { CommitTimeline } from "@/components/CommitTimeline";
+import { SettingsPanel } from "@/components/SettingsPanel";
 
 export function TopBar() {
   const activeRepoPath = useStore((s) => s.activeRepoPath);
@@ -28,7 +28,7 @@ export function TopBar() {
         <span className="muted">Select a repository</span>
         <span className="topbar-spacer" />
         <div className="topbar-tools">
-          <SettingsMenu />
+          <SettingsPanel />
         </div>
       </header>
     );
@@ -117,7 +117,7 @@ export function TopBar() {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
-        <SettingsMenu />
+        <SettingsPanel />
       </div>
     </header>
   );

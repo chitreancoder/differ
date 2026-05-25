@@ -1,9 +1,9 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { Modal } from "./Modal";
-import { useBranches } from "../state/branches";
-import { useStore } from "../state/store";
-import type { Branch } from "../types";
-import { WORKING_TREE_REF } from "../types";
+import { Modal } from "@/components/Modal";
+import { useBranches } from "@/state/branches";
+import { useStore } from "@/state/store";
+import type { Branch } from "@/types";
+import { WORKING_TREE_REF } from "@/types";
 
 type Props = {
   repoPath: string;

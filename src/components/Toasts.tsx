@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useStore } from "../state/store";
+import { useStore } from "@/state/store";
 
 const AUTO_DISMISS_MS = 5000;
 

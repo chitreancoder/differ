@@ -1,7 +1,12 @@
+/**
+ * `useFullDiff` — fetches the unified patch text for the active comparison.
+ * Separate from `useDiffFiles` because the patch is far bigger and used only
+ * by the diff viewer, while the file list also feeds the tree.
+ */
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { isWorkingTree } from "../types";
-import { useStore } from "./store";
+import { isWorkingTree } from "@/types";
+import { useStore } from "@/state/store";
 
 type Key = string;
 const CACHE_LIMIT = 20;

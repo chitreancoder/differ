@@ -1,8 +1,13 @@
+/**
+ * `useCommits` — the commit list between base and compare for a repo, used by
+ * the CommitTimeline strip. Module-level cache; `clearCommitsCache()` is
+ * called from `refresh.ts` on user-initiated refreshes.
+ */
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Commit } from "../types";
-import { isWorkingTree } from "../types";
-import { useStore } from "./store";
+import type { Commit } from "@/types";
+import { isWorkingTree } from "@/types";
+import { useStore } from "@/state/store";
 
 const cache = new Map<string, Commit[]>();
 

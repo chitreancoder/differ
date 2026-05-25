@@ -1,5 +1,5 @@
-import { useStore } from "../state/store";
-import { pickAndAddRepo } from "../state/repoActions";
+import { useStore } from "@/state/store";
+import { pickAndAddRepo } from "@/state/repoActions";
 
 export function Sidebar() {
   const repos = useStore((s) => s.repos);

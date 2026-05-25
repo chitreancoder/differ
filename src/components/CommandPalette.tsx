@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
 import { Command } from "cmdk";
 import { ask } from "@tauri-apps/plugin-dialog";
-import { useStore } from "../state/store";
-import { fetchRemote, refreshAll } from "../state/refresh";
-import { pickAndAddRepo } from "../state/repoActions";
+import { useStore } from "@/state/store";
+import { fetchRemote, refreshAll } from "@/state/refresh";
+import { pickAndAddRepo } from "@/state/repoActions";
 import {
   claudeCommandStatus,
   exportForClaude,
   setupClaudeCommand,
-} from "../state/review";
+} from "@/state/review";
 
 export function CommandPalette() {
   const open = useStore((s) => s.paletteOpen);

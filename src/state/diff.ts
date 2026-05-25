@@ -1,8 +1,13 @@
+/**
+ * `useDiffFiles` — the file-list hook for the active comparison. Owns its own
+ * module-level cache keyed on (repo, base, compare, selectedCommit, ws). Also
+ * exports `visibleFilePaths()` which walks the tree honoring collapse state.
+ */
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { FileEntry } from "../types";
-import { isWorkingTree } from "../types";
-import { useStore } from "./store";
+import type { FileEntry } from "@/types";
+import { isWorkingTree } from "@/types";
+import { useStore } from "@/state/store";
 
 export type TreeNode =
   | {

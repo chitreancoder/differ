@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Sidebar } from "./components/Sidebar";
-import { TopBar } from "./components/TopBar";
-import { MainPane } from "./components/MainPane";
-import { Toasts } from "./components/Toasts";
-import { CommandPalette } from "./components/CommandPalette";
-import { BranchPickerModal } from "./components/BranchPickerModal";
-import { StatusBar } from "./components/StatusBar";
-import { ShortcutsHelp } from "./components/ShortcutsHelp";
-import { useEffectiveTheme } from "./theme";
-import { useShortcuts } from "./state/shortcuts";
-import { loadPersisted, startPersistSubscription } from "./state/persist";
-import { addRepoByPath } from "./state/repoActions";
-import { autoFetchOnce, refreshAll } from "./state/refresh";
-import { useStore } from "./state/store";
-import "./App.css";
+import { Sidebar } from "@/components/Sidebar";
+import { TopBar } from "@/components/TopBar";
+import { MainPanel } from "@/components/MainPanel";
+import { Toasts } from "@/components/Toasts";
+import { CommandPalette } from "@/components/CommandPalette";
+import { BranchPickerModal } from "@/components/BranchPickerModal";
+import { StatusBar } from "@/components/StatusBar";
+import { ShortcutsModal } from "@/components/ShortcutsModal";
+import { useEffectiveTheme } from "@/theme";
+import { useShortcuts } from "@/state/shortcuts";
+import { loadPersisted, startPersistSubscription } from "@/state/persist";
+import { addRepoByPath } from "@/state/repoActions";
+import { autoFetchOnce, refreshAll } from "@/state/refresh";
+import { useStore } from "@/state/store";
+import "@/App.css";
 
 function useAutoFetchOnRepoSwitch() {
   const activeRepoPath = useStore((s) => s.activeRepoPath);
@@ -106,12 +106,12 @@ function App() {
       <Sidebar />
       <div className="workspace">
         <TopBar />
-        <MainPane />
+        <MainPanel />
         <StatusBar />
       </div>
       <Toasts />
       <CommandPalette />
-      <ShortcutsHelp />
+      <ShortcutsModal />
       {branchPickerKind && activeRepoPath && (
         <BranchPickerModal
           repoPath={activeRepoPath}

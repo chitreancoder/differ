@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useStore } from "./state/store";
+import { useStore } from "@/state/store";
 
 export type Theme = "light" | "dark";
 export type ThemePreference = "system" | "light" | "dark";

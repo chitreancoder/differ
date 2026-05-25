@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CodeViewHandle } from "@pierre/diffs/react";
 import type { FileDiffMetadata, SelectionSide } from "@pierre/diffs";
-import type { ReviewComment } from "../types";
-import { useStore } from "../state/store";
+import type { ReviewComment } from "@/types";
+import { useStore } from "@/state/store";
 
 type Match = {
   file: string;

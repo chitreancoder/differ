@@ -1,6 +1,6 @@
-import { useStore } from "../state/store";
-import { exportForClaude } from "../state/review";
-import type { ReviewComment } from "../types";
+import { useStore } from "@/state/store";
+import { exportForClaude } from "@/state/review";
+import type { ReviewComment } from "@/types";
 
 // Stable empty reference: returning a fresh `[]` from a useStore selector makes
 // useSyncExternalStore see a new snapshot every render → infinite update loop.

@@ -1,7 +1,12 @@
+/**
+ * `useShortcuts` — global keyboard hook mounted once from App.tsx. Owns the
+ * full hotkey table; see SHORTCUT entries below for the canonical list. New
+ * shortcuts should also land in ShortcutsModal.tsx for discoverability.
+ */
 import { useEffect, useRef } from "react";
-import { useStore } from "./store";
-import { fetchRemote, refreshAll } from "./refresh";
-import { visibleFilePaths } from "./diff";
+import { useStore } from "@/state/store";
+import { fetchRemote, refreshAll } from "@/state/refresh";
+import { visibleFilePaths } from "@/state/diff";
 
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
