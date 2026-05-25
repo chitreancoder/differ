@@ -3,7 +3,7 @@ import { useCommits } from "../state/commits";
 import { useStore } from "../state/store";
 import { isWorkingTree, type Commit } from "../types";
 
-const TOOLTIP_DELAY_MS = 1000;
+const TOOLTIP_DELAY_MS = 200;
 
 type Props = {
   repoPath: string;
