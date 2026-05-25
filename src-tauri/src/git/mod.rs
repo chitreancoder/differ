@@ -7,4 +7,6 @@ pub use diff::{
     diff_name_status, diff_working_tree_all, diff_working_tree_file,
     diff_working_tree_name_status, repo_fetch,
 };
-pub use meta::{find_merge_base, list_branches, list_commits, validate_repo};
+pub use meta::{
+    clone_repo, find_merge_base, init_repo, list_branches, list_commits, validate_repo,
+};

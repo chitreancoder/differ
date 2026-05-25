@@ -1,6 +1,7 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use git2::{BranchType, Repository, Sort};
+use tokio::process::Command;
 
 use super::types::{BranchInfo, CommitInfo, RepoInfo};
 
@@ -43,6 +44,70 @@ pub fn validate_repo(path: String) -> Result<RepoInfo, String> {
         head_branch,
         user_name,
     })
+}
+
+/// Parse a repo "leaf name" out of a clone URL. Handles HTTPS, SSH, and
+/// trailing `.git` / `/`. Returns None when no useful name can be derived.
+fn repo_name_from_url(url: &str) -> Option<String> {
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    // Strip protocol fluff so the splitter doesn't see slashes in the scheme.
+    let stripped = trimmed
+        .trim_end_matches('/')
+        .rsplit(['/', ':'])
+        .next()
+        .unwrap_or(trimmed)
+        .trim_end_matches(".git");
+    if stripped.is_empty() {
+        None
+    } else {
+        Some(stripped.to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn clone_repo(url: String, parent_dir: String) -> Result<String, String> {
+    let name = repo_name_from_url(&url)
+        .ok_or_else(|| "couldn't infer a directory name from URL".to_string())?;
+    let parent = PathBuf::from(&parent_dir);
+    if !parent.is_dir() {
+        return Err(format!("{} is not a directory", parent_dir));
+    }
+    let target = parent.join(&name);
+    if target.exists() {
+        return Err(format!("{} already exists", target.display()));
+    }
+
+    let output = Command::new("git")
+        .current_dir(&parent)
+        .args(["clone", "--progress", &url, &name])
+        .output()
+        .await
+        .map_err(|e| format!("spawn git: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("git clone failed: {}", stderr.trim()));
+    }
+
+    let canonical = std::fs::canonicalize(&target)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| target.to_string_lossy().into_owned());
+    Ok(canonical)
+}
+
+#[tauri::command]
+pub async fn init_repo(path: String) -> Result<(), String> {
+    let target = PathBuf::from(&path);
+    if !target.is_dir() {
+        return Err(format!("{} is not a directory", path));
+    }
+    // Reuse git2 for the actual init — same dependency we already lean on
+    // everywhere else, so no extra process spawn and no subtle CRLF surprises.
+    Repository::init(&target).map_err(|e| format!("git init: {}", e.message()))?;
+    Ok(())
 }
 
 fn resolve_default_branch(repo: &Repository) -> Option<String> {
