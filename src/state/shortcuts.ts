@@ -22,12 +22,20 @@ export function useShortcuts() {
       if (e.key === "Escape") {
         if (store.paletteOpen) store.setPaletteOpen(false);
         if (store.shortcutsOpen) store.setShortcutsOpen(false);
+        // The search overlay handles its own Esc inside the input; nothing
+        // else to do here.
         return;
       }
 
       if (meta && (lower === "k" || lower === "p")) {
         e.preventDefault();
         store.togglePalette();
+        return;
+      }
+
+      if (meta && lower === "f") {
+        e.preventDefault();
+        store.toggleSearchOpen();
         return;
       }
 

@@ -24,6 +24,8 @@ import type { DiffStyle, ReviewComment } from "../types";
 import type { Theme } from "../theme";
 import { poolOptions, highlighterOptions } from "../diffs/workerPool";
 import { truncateSnippet } from "../state/review";
+import { useStore } from "../state/store";
+import { DiffSearch } from "./DiffSearch";
 
 /**
  * Injected *into each file's Shadow DOM* via the `unsafeCSS` option — plain
@@ -401,10 +403,12 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
     }, [commentMode]);
 
     // A diff reload / branch / commit switch invalidates line numbers, so drop
-    // any open draft or stale highlight.
+    // any open draft or stale highlight. Also close the search overlay since
+    // its match indices point at the previous patch.
     useEffect(() => {
       setDraft(null);
       clearHighlight();
+      useStore.getState().setSearchOpen(false);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patch, scopeKey]);
 
@@ -617,6 +621,11 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
                 : `${armedCount} lines (${armed.start}–${armed.end})`}
             </button>
           )}
+          <DiffSearch
+            fileDiffs={fileDiffs}
+            fileOrder={fileOrder}
+            viewRef={viewRef}
+          />
           <CodeView<ReviewComment>
             ref={viewRef}
             items={items}

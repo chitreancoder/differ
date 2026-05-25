@@ -35,6 +35,9 @@ type State = {
   /** Transient view filter: when true, the file tree only shows files with
    *  at least one comment in the current scope. Reset on every cold start. */
   commentsOnlyFilter: boolean;
+  /** In-diff find overlay state. Not persisted. */
+  searchOpen: boolean;
+  searchQuery: string;
   hydrated: boolean;
 };
 
@@ -83,6 +86,9 @@ type Actions = {
   toggleIgnoreWhitespace: () => void;
   toggleCommentsOnlyFilter: () => void;
   setCommentsOnlyFilter: (on: boolean) => void;
+  setSearchOpen: (open: boolean) => void;
+  toggleSearchOpen: () => void;
+  setSearchQuery: (q: string) => void;
 };
 
 let toastSeq = 0;
@@ -112,6 +118,8 @@ export const useStore = create<State & Actions>((set) => ({
   themePreference: "system",
   ignoreWhitespace: false,
   commentsOnlyFilter: false,
+  searchOpen: false,
+  searchQuery: "",
   hydrated: false,
 
   hydrate: (data) => set((s) => ({ ...s, ...data, hydrated: true })),
@@ -275,4 +283,7 @@ export const useStore = create<State & Actions>((set) => ({
   setCommentsOnlyFilter: (on) => set({ commentsOnlyFilter: on }),
   toggleCommentsOnlyFilter: () =>
     set((s) => ({ commentsOnlyFilter: !s.commentsOnlyFilter })),
+  setSearchOpen: (open) => set({ searchOpen: open }),
+  toggleSearchOpen: () => set((s) => ({ searchOpen: !s.searchOpen })),
+  setSearchQuery: (q) => set({ searchQuery: q }),
 }));

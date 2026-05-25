@@ -26,6 +26,7 @@ export function CommandPalette() {
   const toggleCommentsOnlyFilter = useStore(
     (s) => s.toggleCommentsOnlyFilter,
   );
+  const toggleSearchOpen = useStore((s) => s.toggleSearchOpen);
   const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -195,6 +196,14 @@ export function CommandPalette() {
               >
                 Toggle "files with comments" filter{" "}
                 <span className="palette-shortcut">f</span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => {
+                  toggleSearchOpen();
+                  close();
+                }}
+              >
+                Find in diff <span className="palette-shortcut">⌘F</span>
               </Command.Item>
               <Command.Item
                 value="theme system follow auto"
