@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -39,6 +40,13 @@ export default defineConfig(async () => ({
   // default "iife" can't code-split a worker).
   worker: {
     format: "es",
+  },
+
+  // Vitest config — jsdom for the React hook tests, no global setup needed.
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    globals: false,
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
