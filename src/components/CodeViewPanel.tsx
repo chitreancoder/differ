@@ -13,31 +13,40 @@ import {
 } from "@pierre/diffs/react";
 import {
   parsePatchFiles,
-  type CodeViewDiffItem,
   type CodeViewItem,
   type CodeViewLineSelection,
   type DiffLineAnnotation,
   type FileDiffMetadata,
-  type SelectionSide,
 } from "@pierre/diffs";
 import type { DiffStyle, ReviewComment } from "@/types";
 import type { Theme } from "@/theme";
 import { poolOptions, highlighterOptions } from "@/diffs/workerPool";
 import { truncateSnippet } from "@/state/review";
 import { useStore } from "@/state/store";
+import {
+  deriveSnippet,
+  fromLibSide,
+  toLibSide,
+  useCodeViewComments,
+  type Draft,
+} from "@/state/codeViewComments";
 import { DiffSearch } from "@/components/DiffSearch";
-import { relativeTimeFromMs } from "@/utils/time";
+import {
+  Composer,
+  DetachedComments,
+  FileHeaderSlot,
+  SavedComment,
+} from "@/components/CodeViewCommentOverlay";
 import { nameInitials } from "@/utils/avatar";
 
 /**
- * Injected *into each file's Shadow DOM* via the `unsafeCSS` option — plain
- * App.css can't reach the header because it lives behind the shadow boundary.
+ * CSS injected into each file's Shadow DOM via Pierre's `unsafeCSS` option —
+ * plain App.css can't reach there.
  *
- * - Sticky-header fix: promote the sticky header to its own compositor layer
- *   so WKWebView (Tauri/macOS) doesn't repaint it out of sync with scrolling.
- * - Commented-dot: tiny gutter marker stamped by `onPostRender` for every line
- *   with a comment. `position:relative` on the gutter cell lets us anchor the
- *   absolute-positioned dot. `light-dark()` keeps it readable in both themes.
+ *  - Sticky-header fix: promote the sticky header to its own compositor layer
+ *    so WKWebView (Tauri/macOS) doesn't repaint it out of sync with scrolling.
+ *  - Commented-dot: tiny gutter marker stamped by `onPostRender` for every
+ *    line with a comment. `light-dark()` keeps it readable in both themes.
  */
 function shadowCSS(commentMode: boolean): string {
   return [
@@ -52,107 +61,11 @@ function shadowCSS(commentMode: boolean): string {
   ].join("");
 }
 
-export type CodeViewPanelHandle = {
-  scrollToFile: (path: string) => void;
-};
-
-/** Our `"old"|"new"` model side maps onto the library's annotation sides. */
-function toLibSide(side: "old" | "new"): SelectionSide {
-  return side === "old" ? "deletions" : "additions";
-}
-function fromLibSide(side: SelectionSide | undefined): "old" | "new" {
-  return side === "deletions" ? "old" : "new";
-}
-
 /**
- * Map a (side, line range) onto the captured diff text by walking the parsed
- * hunks. Within a hunk, file line numbers run contiguously from
- * `additionStart`/`deletionStart` and index contiguously from
- * `additionLineIndex`/`deletionLineIndex` into the flat line arrays. Returns
- * "" if no overlap is found (e.g. the range no longer exists after a refresh).
- */
-function deriveSnippet(
-  fileDiff: FileDiffMetadata,
-  side: "old" | "new",
-  start: number,
-  end: number,
-): string {
-  const lines = side === "old" ? fileDiff.deletionLines : fileDiff.additionLines;
-  const out: string[] = [];
-  for (const hunk of fileDiff.hunks) {
-    const hunkStart = side === "old" ? hunk.deletionStart : hunk.additionStart;
-    const hunkCount = side === "old" ? hunk.deletionCount : hunk.additionCount;
-    const hunkIndex =
-      side === "old" ? hunk.deletionLineIndex : hunk.additionLineIndex;
-    const hunkEnd = hunkStart + hunkCount - 1;
-    const from = Math.max(start, hunkStart);
-    const to = Math.min(end, hunkEnd);
-    for (let ln = from; ln <= to; ln++) {
-      const idx = hunkIndex + (ln - hunkStart);
-      if (idx >= 0 && idx < lines.length) out.push(lines[idx]);
-    }
-  }
-  return out.join("\n");
-}
-
-/**
- * A content signature for a file's annotations. CodeView skips re-rendering an
- * item when its `version` is unchanged (CodeView.js: `item.version ===
- * nextItem.version`), so a plain count breaks: a draft composer (1 annotation)
- * turning into a saved comment (1 annotation) keeps the count at 1 and the
- * stale composer stays. Hashing id/body/sent/line makes the version change
- * whenever the rendered content does.
- */
-function annotationsVersion(
-  anns: DiffLineAnnotation<ReviewComment>[] | undefined,
-  revealedId: string | null,
-): number {
-  if (!anns || anns.length === 0) return 0;
-  let h = 0;
-  for (const a of anns) {
-    const m = a.metadata;
-    const revealed = m.id === revealedId ? 1 : 0;
-    const sig = `${a.lineNumber}|${a.side}|${m.id}|${m.sent ? 1 : 0}|${revealed}|${m.body}`;
-    for (let i = 0; i < sig.length; i++) {
-      h = (Math.imul(h, 31) + sig.charCodeAt(i)) | 0;
-    }
-  }
-  return h;
-}
-
-/**
- * Bumps when anything that affects a file's header slot changes (file-level
- * notes for that file, the global commentMode toggle, or a file-level draft
- * being open for that file). Folded into the item's `version` so Pierre
- * re-runs `renderHeaderMetadata`.
- */
-function fileHeaderVersion(
-  fileNotes: ReviewComment[],
-  commentMode: boolean,
-  draftActive: boolean,
-): number {
-  let h = (commentMode ? 1 : 0) * 31 + (draftActive ? 2 : 0);
-  for (const c of fileNotes) {
-    const sig = `${c.id}|${c.sent ? 1 : 0}|${c.body}`;
-    for (let i = 0; i < sig.length; i++) {
-      h = (Math.imul(h, 31) + sig.charCodeAt(i)) | 0;
-    }
-  }
-  return h;
-}
-
-/**
- * Stamp a small dot in the line-number gutter for every line in every line-
- * anchored comment of a file. Called from Pierre's `onPostRender`, runs per
- * file after each render — the previous render's dots are gone with the old
- * DOM, but we still clear residual `.commented-dot` first to be idempotent in
- * the unlikely case Pierre re-uses the same gutter element. Clicking a dot
- * calls `revealComment` so users can jump between comments visually.
- *
- * Split view: dots target the correct side via `[data-additions]` or
- * `[data-deletions]`. Unified view collapses sides into one gutter — we
- * best-effort match by line number; `data-line-type` isn't checked because
- * unified shows just one number per row anyway.
+ * Stamp a small dot in the line-number gutter for every line with a line-
+ * anchored comment. Called per-file from Pierre's `onPostRender`. Idempotent
+ * (clears any residual `.commented-dot` first) in case Pierre re-uses the
+ * gutter element across renders.
  */
 function stampCommentedDots(
   node: HTMLElement,
@@ -168,7 +81,6 @@ function stampCommentedDots(
   const root = node.shadowRoot;
   if (!root) return;
 
-  // Idempotent restamp.
   root.querySelectorAll(".commented-dot").forEach((d) => d.remove());
 
   const fileComments = comments.filter(
@@ -179,6 +91,8 @@ function stampCommentedDots(
   for (const c of fileComments) {
     if (!c.range) continue;
     const libSide = toLibSide(c.range.side);
+    // Split view: target the correct side. Unified collapses sides into one
+    // gutter — match by line number alone.
     const sideSel =
       diffStyle === "unified"
         ? "[data-unified]"
@@ -205,27 +119,9 @@ function stampCommentedDots(
   }
 }
 
-/** True if the comment is still anchored: a file-level note as long as the
- *  file is present, a line note as long as its line range maps into the diff. */
-function commentAnchored(
-  fileDiff: FileDiffMetadata | undefined,
-  c: ReviewComment,
-): boolean {
-  if (!fileDiff) return false;
-  if (!c.range) return true; // file-level note: anchored by file existing
-  return deriveSnippet(fileDiff, c.range.side, c.range.start, c.range.end) !== "";
-}
-
-type Draft =
-  | {
-      kind: "line";
-      file: string;
-      start: number;
-      end: number;
-      side: "old" | "new";
-      snippet: string;
-    }
-  | { kind: "file"; file: string };
+export type CodeViewPanelHandle = {
+  scrollToFile: (path: string) => void;
+};
 
 type Props = {
   patch: string;
@@ -242,7 +138,7 @@ type Props = {
   /** Binary files can't be commented on. */
   binaryFiles: Set<string>;
   /** `git config user.name` for the active repo. Drives the reviewer avatar
-   *  and display name on comment cards. Null falls back to "You" / "JR". */
+   *  and display name on comment cards. Null falls back to "You" / "ME". */
   authorName: string | null;
   onAddComment: (c: ReviewComment) => void;
   onUpdateComment: (id: string, patch: Partial<ReviewComment>) => void;
@@ -276,9 +172,9 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
     const [selection, setSelection] = useState<CodeViewLineSelection | null>(
       null,
     );
-    // When the current `selection` is a comment being revealed (vs. an arming
-    // selection for a new comment), this holds that comment's id. It gates the
-    // "Add comment" button off and lets the chip toggle/clear itself.
+    // Holds the id of the comment whose lines are currently highlighted by a
+    // reveal (vs. an arming selection for a new comment). Gates the "Add
+    // comment" CTA off and lets the chip toggle/clear itself.
     const [revealedId, setRevealedId] = useState<string | null>(null);
 
     const fileDiffs = useMemo(() => {
@@ -291,105 +187,18 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
     }, [patch, scopeKey]);
 
     // Stable CSS string — Pierre compares unsafeCSS by identity to decide
-    // whether to re-inject into each file's shadow DOM. Without memo we'd
-    // hand it a fresh string every render and invalidate that check.
+    // whether to re-inject into each file's shadow DOM.
     const unsafeCSS = useMemo(() => shadowCSS(commentMode), [commentMode]);
 
-    // Comments no longer anchored: file gone, or (for line notes) range no
-    // longer mapping. File-level notes survive any in-file change.
-    const detached = useMemo(
-      () => comments.filter((c) => !commentAnchored(fileDiffs.get(c.file), c)),
-      [comments, fileDiffs],
-    );
-    const detachedIds = useMemo(
-      () => new Set(detached.map((c) => c.id)),
-      [detached],
-    );
-
-    // File-level notes (no range), bucketed by file for fast header lookup.
-    const fileNotesByFile = useMemo(() => {
-      const m = new Map<string, ReviewComment[]>();
-      for (const c of comments) {
-        if (c.range || detachedIds.has(c.id)) continue;
-        const bucket = m.get(c.file);
-        if (bucket) bucket.push(c);
-        else m.set(c.file, [c]);
-      }
-      return m;
-    }, [comments, detachedIds]);
-
-    const items = useMemo<CodeViewDiffItem<ReviewComment>[]>(() => {
-      // Group line-anchored comments + the live line draft into per-file
-      // annotations. File-level notes / drafts are rendered in the file's
-      // header metadata slot, not as Pierre annotations.
-      const annByFile = new Map<string, DiffLineAnnotation<ReviewComment>[]>();
-      const push = (file: string, ann: DiffLineAnnotation<ReviewComment>) => {
-        const bucket = annByFile.get(file);
-        if (bucket) bucket.push(ann);
-        else annByFile.set(file, [ann]);
-      };
-
-      for (const c of comments) {
-        if (detachedIds.has(c.id)) continue;
-        if (!c.range) continue; // file-level → header slot
-        push(c.file, {
-          side: toLibSide(c.range.side),
-          lineNumber: c.range.end,
-          metadata: c,
-        });
-      }
-      if (draft && draft.kind === "line") {
-        // A transient composer annotation carries an empty-id ReviewComment.
-        push(draft.file, {
-          side: toLibSide(draft.side),
-          lineNumber: draft.end,
-          metadata: {
-            id: "",
-            file: draft.file,
-            range: { start: draft.start, end: draft.end, side: draft.side },
-            snippet: draft.snippet,
-            body: "",
-            createdAt: 0,
-            sent: false,
-          },
-        });
-      }
-
-      const all = [...fileDiffs.values()].map((fileDiff) => {
-        const annotations = annByFile.get(fileDiff.name);
-        const fileNotes = fileNotesByFile.get(fileDiff.name) ?? [];
-        const fileDraftActive =
-          draft?.kind === "file" && draft.file === fileDiff.name;
-        // Combined version: line annotations + file-header slot. Either kind
-        // of content change has to bump this so Pierre re-renders the item.
-        const aV = annotationsVersion(annotations, revealedId);
-        const fV = fileHeaderVersion(fileNotes, commentMode, fileDraftActive);
-        return {
-          id: fileDiff.name,
-          type: "diff" as const,
-          fileDiff,
-          annotations,
-          version: (Math.imul(aV, 31) + fV) | 0,
-        };
-      });
-
-      // Reorder to match the file tree (folders-first, alphabetical). Patch
-      // order from git doesn't match the tree's sort. Unranked files keep
-      // their relative order at the end (sort is stable).
-      const rank = new Map(fileOrder.map((p, i) => [p, i]));
-      return all.sort(
-        (a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity),
+    const { detached, detachedIds, fileNotesByFile, items } =
+      useCodeViewComments(
+        comments,
+        fileDiffs,
+        draft,
+        revealedId,
+        commentMode,
+        fileOrder,
       );
-    }, [
-      fileDiffs,
-      comments,
-      draft,
-      detachedIds,
-      fileOrder,
-      revealedId,
-      fileNotesByFile,
-      commentMode,
-    ]);
 
     useImperativeHandle(
       ref,
@@ -406,10 +215,10 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
       [],
     );
 
-    // RAF-throttled scroll handler: figures out which file's header is anchored
-    // at the top of the viewport and notifies the parent so the file tree's
-    // highlight follows the diff. Pierre fires onScroll a lot — without the RAF
-    // gate we'd churn the store on every wheel tick.
+    // RAF-throttled scroll handler: figure out which file's header is anchored
+    // at the top of the viewport and notify the parent so the file tree's
+    // highlight follows the diff. Pierre fires onScroll a lot — without the
+    // RAF gate we'd churn the store on every wheel tick.
     const scrollFrame = useRef<number | null>(null);
     const lastVisibleFile = useRef<string | null>(null);
     const itemsRef = useRef(items);
@@ -439,9 +248,9 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [commentMode]);
 
-    // A diff reload / branch / commit switch invalidates line numbers, so drop
-    // any open draft or stale highlight. Also close the search overlay since
-    // its match indices point at the previous patch.
+    // A diff reload / branch / commit switch invalidates line numbers, so
+    // drop any open draft or stale highlight. Also close the search overlay
+    // since its match indices point at the previous patch.
     useEffect(() => {
       setDraft(null);
       clearHighlight();
@@ -451,20 +260,18 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
 
     // Selecting lines only *arms* a range — it does NOT open the composer.
     // Opening it here would mount an annotation mid-gesture and prevent the
-    // user from extending the selection (drag the gutter / shift-click). The
-    // floating "Add comment" button below opens the composer for the whole
-    // range, so a single line is just a range where start === end.
+    // user from extending the selection. The floating "Add comment" button
+    // below opens the composer for the whole range.
     const handleSelectedLinesChange = (
       sel: CodeViewLineSelection | null,
     ) => {
       if (!commentMode) return;
       setSelection(sel);
-      // A fresh gutter selection is an arming selection, not a reveal.
       setRevealedId(null);
     };
 
     // The armed selection, normalized, if it can be commented on. A reveal
-    // (revealedId set) is not armable — it must not show the "Add comment" CTA.
+    // (revealedId set) is not armable — must not show the "Add comment" CTA.
     const armed =
       commentMode && selection && !revealedId && !binaryFiles.has(selection.id)
         ? {
@@ -501,9 +308,7 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
     };
 
     // Clicking a comment's location chip toggles a highlight of its lines
-    // (Pierre's native, syntax-aware selection) and scrolls them into view —
-    // works in or out of comment mode since the highlight reuses the selection
-    // layer. Clicking the active chip again (or another chip) clears/switches.
+    // (Pierre's native, syntax-aware selection) and scrolls them into view.
     const revealComment = (c: ReviewComment) => {
       if (revealedId === c.id) {
         clearHighlight();
@@ -571,8 +376,8 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
       closeDraft();
     };
 
-    // Author display + avatar derived once from git config (the active repo's
-    // user.name). Falls back to "You"/"ME" when no name is configured.
+    // Author display + avatar derived from the active repo's git user.name.
+    // Falls back to "You" / "ME" when no name is configured.
     const authorDisplay = authorName ?? "You";
     const authorAvatar = authorName ? nameInitials(authorName) : "ME";
 
@@ -690,7 +495,6 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
                 // Find the item whose top offset is the largest value
                 // satisfying `top <= scrollTop` — that's the file whose
                 // sticky header is currently anchored at the viewport top.
-                // A small offset absorbs sub-pixel rounding.
                 let bestId: string | null = null;
                 let bestTop = -Infinity;
                 const cutoff = scrollTop + 1;
@@ -713,13 +517,11 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
               themeType: theme,
               onLineClick: (props, ctx) => {
                 // Only intercept body clicks while comment mode is on. The
-                // gutter has its own selection mechanism
-                // (enableLineSelection) so we leave numberColumn clicks
-                // alone.
+                // gutter has its own selection mechanism (enableLineSelection)
+                // so we leave numberColumn clicks alone.
                 if (!commentMode) return;
                 if (props.numberColumn) return;
                 if (!ctx || ctx.type !== "diff") return;
-                // Type narrows: diff context → DiffLineEventBaseProps.
                 if (!("annotationSide" in props)) return;
                 const file = ctx.item.id;
                 const libSide = props.annotationSide;
@@ -730,9 +532,8 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
                   existing &&
                   existing.id === file
                 ) {
-                  // Shift+click: extend from the existing anchor
-                  // (range.start) to the clicked line. Allow crossing
-                  // sides via endSide.
+                  // Shift+click: extend from the existing anchor to the
+                  // clicked line. Allow crossing sides via endSide.
                   setSelection({
                     id: file,
                     range: {
@@ -754,18 +555,14 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
                     },
                   });
                 }
-                // A new selection is an arming selection, not a reveal.
                 setRevealedId(null);
-                // Don't preventDefault — keep native text selection working
-                // for copy on double-click / native drag inside one line.
+                // Don't preventDefault — keep native text selection working.
               },
-              // Gate Pierre's gutter line-selection on comment mode; off, native
-              // text selection/copy works normally. Without this the gutter is
-              // inert and onSelectedLinesChange never fires.
+              // Gate Pierre's gutter line-selection on comment mode; off,
+              // native text selection/copy works normally.
               enableLineSelection: commentMode,
               // "scroll" keeps every row a uniform height so the virtualizer
-              // knows exact offsets and skips post-render height reconciliation
-              // — smoothest scrolling. Long lines scroll horizontally per file.
+              // knows exact offsets and skips post-render height reconciliation.
               overflow: "scroll",
               stickyHeaders: true,
               unsafeCSS,
@@ -786,423 +583,3 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
     );
   },
 );
-
-/**
- * Compact chip naming where a comment is attached. For line notes, clicking
- * highlights those lines (Pierre's native, syntax-aware selection). For
- * file-level notes, clicking scrolls to the top of the file.
- */
-function CommentContext({
-  range,
-  onReveal,
-  active = false,
-}: {
-  range?: ReviewComment["range"];
-  onReveal?: () => void;
-  active?: boolean;
-}) {
-  if (!range) {
-    if (!onReveal) {
-      return (
-        <span className="comment-loc-chip static file-level">File note</span>
-      );
-    }
-    return (
-      <button
-        className={`comment-loc-chip file-level ${active ? "active" : ""}`}
-        onClick={onReveal}
-        title="Scroll to file"
-      >
-        File note
-      </button>
-    );
-  }
-  const loc =
-    range.start === range.end
-      ? `Line ${range.start}`
-      : `Lines ${range.start}–${range.end}`;
-  const label = `${loc} · ${range.side === "old" ? "removed" : "added"}`;
-  if (!onReveal) {
-    return <span className="comment-loc-chip static">{label}</span>;
-  }
-  return (
-    <button
-      className={`comment-loc-chip ${active ? "active" : ""}`}
-      onClick={onReveal}
-      title={active ? "Clear highlight" : "Highlight these lines"}
-    >
-      {label}
-    </button>
-  );
-}
-
-function Composer({
-  comment,
-  onSave,
-  onCancel,
-}: {
-  comment: ReviewComment;
-  onSave: (body: string) => void;
-  onCancel: () => void;
-}) {
-  const [body, setBody] = useState("");
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    ref.current?.focus();
-  }, []);
-  return (
-    <div className="comment-composer">
-      <CommentContext range={comment.range} />
-      <textarea
-        ref={ref}
-        className="comment-textarea"
-        value={body}
-        placeholder="Leave a note for Claude…"
-        onChange={(e) => setBody(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault();
-            onCancel();
-          } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            onSave(body);
-          }
-        }}
-      />
-      <div className="comment-actions">
-        <button className="btn-primary btn-sm" onClick={() => onSave(body)}>
-          Save
-        </button>
-        <button className="btn-secondary btn-sm" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SavedComment({
-  comment,
-  authorDisplay,
-  authorAvatar,
-  onSave,
-  onDelete,
-  onReveal,
-  isRevealed,
-}: {
-  comment: ReviewComment;
-  authorDisplay: string;
-  authorAvatar: string;
-  onSave: (body: string) => void;
-  onDelete: () => void;
-  onReveal: () => void;
-  isRevealed: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [body, setBody] = useState(comment.body);
-
-  if (editing) {
-    return (
-      <div className="comment-composer">
-        <textarea
-          className="comment-textarea"
-          value={body}
-          autoFocus
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              setBody(comment.body);
-              setEditing(false);
-            } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              onSave(body.trim());
-              setEditing(false);
-            }
-          }}
-        />
-        <div className="comment-actions">
-          <button
-            className="btn-primary btn-sm"
-            onClick={() => {
-              onSave(body.trim());
-              setEditing(false);
-            }}
-          >
-            Save
-          </button>
-          <button
-            className="btn-secondary btn-sm"
-            onClick={() => {
-              setBody(comment.body);
-              setEditing(false);
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="comment-saved">
-      <div className="comment-saved-header">
-        <span className="comment-avatar">{authorAvatar}</span>
-        <span className="comment-author">{authorDisplay}</span>
-        <span className="comment-time">
-          · {relativeTimeFromMs(comment.createdAt)} ago
-        </span>
-        <span className="comment-saved-spacer" />
-        <CommentContext
-          range={comment.range}
-          onReveal={onReveal}
-          active={isRevealed}
-        />
-      </div>
-      <div className="comment-body">{comment.body}</div>
-      <div className="comment-meta">
-        <button className="comment-link" onClick={() => setEditing(true)}>
-          Edit
-        </button>
-        <button className="comment-link" onClick={onDelete}>
-          Delete
-        </button>
-        <span className="comment-saved-spacer" />
-        {comment.sent && <span className="comment-sent">sent ✓</span>}
-      </div>
-    </div>
-  );
-}
-
-function DetachedComments({
-  comments,
-  onDelete,
-}: {
-  comments: ReviewComment[];
-  onDelete: (id: string) => void;
-}) {
-  return (
-    <div className="detached-comments">
-      <div className="detached-title">
-        Detached comments ({comments.length}) — the file or lines they
-        referenced no longer exist in this diff. Still exported.
-      </div>
-      {comments.map((c) => (
-        <div key={c.id} className="detached-item">
-          <span className="detached-loc">
-            {c.file}
-            {c.range
-              ? `:${c.range.start}${
-                  c.range.end !== c.range.start ? `–${c.range.end}` : ""
-                } (${c.range.side})`
-              : " (file-level)"}
-          </span>
-          {c.snippet && (
-            <pre className="comment-context-snippet">{c.snippet}</pre>
-          )}
-          <span className="detached-body">{c.body}</span>
-          <button className="comment-link" onClick={() => onDelete(c.id)}>
-            delete
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/**
- * Per-file widget injected into Pierre's file header via `renderHeaderMetadata`.
- * Shows existing file-level notes inline, an "+ Add file note" button when
- * in comment mode, and the composer when a file-level draft is active for
- * this file.
- */
-function FileHeaderSlot({
-  notes,
-  commentMode,
-  drafting,
-  authorDisplay,
-  authorAvatar,
-  onAdd,
-  onSaveDraft,
-  onCancelDraft,
-  onEdit,
-  onDelete,
-  revealedId,
-  onReveal,
-}: {
-  notes: ReviewComment[];
-  commentMode: boolean;
-  drafting: boolean;
-  authorDisplay: string;
-  authorAvatar: string;
-  onAdd: () => void;
-  onSaveDraft: (body: string) => void;
-  onCancelDraft: () => void;
-  onEdit: (id: string, body: string, prev: ReviewComment) => void;
-  onDelete: (id: string) => void;
-  revealedId: string | null;
-  onReveal: (c: ReviewComment) => void;
-}) {
-  return (
-    <div className="file-header-slot">
-      {notes.map((c) => (
-        <FileLevelNote
-          key={c.id}
-          comment={c}
-          authorDisplay={authorDisplay}
-          authorAvatar={authorAvatar}
-          onSave={(body) => onEdit(c.id, body, c)}
-          onDelete={() => onDelete(c.id)}
-          onReveal={() => onReveal(c)}
-          isRevealed={revealedId === c.id}
-        />
-      ))}
-      {drafting && (
-        <FileLevelComposer onSave={onSaveDraft} onCancel={onCancelDraft} />
-      )}
-      {commentMode && !drafting && (
-        <button
-          className="file-note-add"
-          onClick={onAdd}
-          title="Add a comment about this whole file"
-        >
-          + File note
-        </button>
-      )}
-    </div>
-  );
-}
-
-function FileLevelComposer({
-  onSave,
-  onCancel,
-}: {
-  onSave: (body: string) => void;
-  onCancel: () => void;
-}) {
-  const [body, setBody] = useState("");
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    ref.current?.focus();
-  }, []);
-  return (
-    <div className="comment-composer file-level">
-      <CommentContext />
-      <textarea
-        ref={ref}
-        className="comment-textarea"
-        value={body}
-        placeholder="A note about this whole file…"
-        onChange={(e) => setBody(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault();
-            onCancel();
-          } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-            e.preventDefault();
-            onSave(body);
-          }
-        }}
-      />
-      <div className="comment-actions">
-        <button className="btn-primary btn-sm" onClick={() => onSave(body)}>
-          Save
-        </button>
-        <button className="btn-secondary btn-sm" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function FileLevelNote({
-  comment,
-  authorDisplay,
-  authorAvatar,
-  onSave,
-  onDelete,
-  onReveal,
-  isRevealed,
-}: {
-  comment: ReviewComment;
-  authorDisplay: string;
-  authorAvatar: string;
-  onSave: (body: string) => void;
-  onDelete: () => void;
-  onReveal: () => void;
-  isRevealed: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [body, setBody] = useState(comment.body);
-
-  if (editing) {
-    return (
-      <div className="comment-composer file-level">
-        <textarea
-          className="comment-textarea"
-          value={body}
-          autoFocus
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              setBody(comment.body);
-              setEditing(false);
-            } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              onSave(body.trim());
-              setEditing(false);
-            }
-          }}
-        />
-        <div className="comment-actions">
-          <button
-            className="btn-primary btn-sm"
-            onClick={() => {
-              onSave(body.trim());
-              setEditing(false);
-            }}
-          >
-            Save
-          </button>
-          <button
-            className="btn-secondary btn-sm"
-            onClick={() => {
-              setBody(comment.body);
-              setEditing(false);
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="comment-saved file-level">
-      <div className="comment-saved-header">
-        <span className="comment-avatar">{authorAvatar}</span>
-        <span className="comment-author">{authorDisplay}</span>
-        <span className="comment-time">
-          · {relativeTimeFromMs(comment.createdAt)} ago
-        </span>
-        <span className="comment-saved-spacer" />
-        <CommentContext onReveal={onReveal} active={isRevealed} />
-      </div>
-      <div className="comment-body">{comment.body}</div>
-      <div className="comment-meta">
-        <button className="comment-link" onClick={() => setEditing(true)}>
-          Edit
-        </button>
-        <button className="comment-link" onClick={onDelete}>
-          Delete
-        </button>
-        <span className="comment-saved-spacer" />
-        {comment.sent && <span className="comment-sent">sent ✓</span>}
-      </div>
-    </div>
-  );
-}
