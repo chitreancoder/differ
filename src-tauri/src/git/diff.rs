@@ -130,19 +130,46 @@ fn merge_entries(
         .collect()
 }
 
+/// Insert `-w` (ignore-all-whitespace) right after the git subcommand if asked.
+/// Both `git diff` and `git diff-tree` accept it as an early option.
+fn with_ws<'a>(args: Vec<&'a str>, ignore_whitespace: bool) -> Vec<&'a str> {
+    if !ignore_whitespace {
+        return args;
+    }
+    let mut out = Vec::with_capacity(args.len() + 1);
+    let mut iter = args.into_iter();
+    if let Some(first) = iter.next() {
+        out.push(first);
+        out.push("-w");
+        out.extend(iter);
+    }
+    out
+}
+
 #[tauri::command]
 pub async fn diff_name_status(
     path: String,
     base: String,
     compare: String,
+    ignore_whitespace: bool,
 ) -> Result<Vec<FileEntry>, String> {
     let range = format!("{}...{}", base, compare);
     let name_status = run_git(
         &path,
-        &["diff", "--name-status", "-M", "-C", &range],
+        &with_ws(
+            vec!["diff", "--name-status", "-M", "-C", &range],
+            ignore_whitespace,
+        ),
     )
     .await?;
-    let numstat = run_git(&path, &["diff", "--numstat", "-M", "-C", &range]).await?;
+    let numstat = run_git(
+        &path,
+        &with_ws(
+            vec!["diff", "--numstat", "-M", "-C", &range],
+            ignore_whitespace,
+        ),
+    )
+    .await?;
     Ok(merge_entries(parse_name_status(&name_status), parse_numstat(&numstat)))
 }
 
@@ -152,9 +179,17 @@ pub async fn diff_file(
     base: String,
     compare: String,
     file: String,
+    ignore_whitespace: bool,
 ) -> Result<String, String> {
     let range = format!("{}...{}", base, compare);
-    run_git(&path, &["diff", "--no-color", &range, "--", &file]).await
+    run_git(
+        &path,
+        &with_ws(
+            vec!["diff", "--no-color", &range, "--", &file],
+            ignore_whitespace,
+        ),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -162,42 +197,57 @@ pub async fn diff_all(
     path: String,
     base: String,
     compare: String,
+    ignore_whitespace: bool,
 ) -> Result<String, String> {
     let range = format!("{}...{}", base, compare);
-    run_git(&path, &["diff", "--no-color", "-M", "-C", &range]).await
+    run_git(
+        &path,
+        &with_ws(
+            vec!["diff", "--no-color", "-M", "-C", &range],
+            ignore_whitespace,
+        ),
+    )
+    .await
 }
 
 #[tauri::command]
 pub async fn diff_commit_name_status(
     path: String,
     sha: String,
+    ignore_whitespace: bool,
 ) -> Result<Vec<FileEntry>, String> {
     let name_status = run_git(
         &path,
-        &[
-            "diff-tree",
-            "-r",
-            "--root",
-            "--no-commit-id",
-            "--name-status",
-            "-M",
-            "-C",
-            &sha,
-        ],
+        &with_ws(
+            vec![
+                "diff-tree",
+                "-r",
+                "--root",
+                "--no-commit-id",
+                "--name-status",
+                "-M",
+                "-C",
+                &sha,
+            ],
+            ignore_whitespace,
+        ),
     )
     .await?;
     let numstat = run_git(
         &path,
-        &[
-            "diff-tree",
-            "-r",
-            "--root",
-            "--no-commit-id",
-            "--numstat",
-            "-M",
-            "-C",
-            &sha,
-        ],
+        &with_ws(
+            vec![
+                "diff-tree",
+                "-r",
+                "--root",
+                "--no-commit-id",
+                "--numstat",
+                "-M",
+                "-C",
+                &sha,
+            ],
+            ignore_whitespace,
+        ),
     )
     .await?;
     Ok(merge_entries(parse_name_status(&name_status), parse_numstat(&numstat)))
@@ -207,10 +257,24 @@ pub async fn diff_commit_name_status(
 pub async fn diff_working_tree_name_status(
     path: String,
     base: String,
+    ignore_whitespace: bool,
 ) -> Result<Vec<FileEntry>, String> {
-    let name_status =
-        run_git(&path, &["diff", "--name-status", "-M", "-C", &base]).await?;
-    let numstat = run_git(&path, &["diff", "--numstat", "-M", "-C", &base]).await?;
+    let name_status = run_git(
+        &path,
+        &with_ws(
+            vec!["diff", "--name-status", "-M", "-C", &base],
+            ignore_whitespace,
+        ),
+    )
+    .await?;
+    let numstat = run_git(
+        &path,
+        &with_ws(
+            vec!["diff", "--numstat", "-M", "-C", &base],
+            ignore_whitespace,
+        ),
+    )
+    .await?;
     Ok(merge_entries(parse_name_status(&name_status), parse_numstat(&numstat)))
 }
 
@@ -218,8 +282,16 @@ pub async fn diff_working_tree_name_status(
 pub async fn diff_working_tree_all(
     path: String,
     base: String,
+    ignore_whitespace: bool,
 ) -> Result<String, String> {
-    run_git(&path, &["diff", "--no-color", "-M", "-C", &base]).await
+    run_git(
+        &path,
+        &with_ws(
+            vec!["diff", "--no-color", "-M", "-C", &base],
+            ignore_whitespace,
+        ),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -227,8 +299,16 @@ pub async fn diff_working_tree_file(
     path: String,
     base: String,
     file: String,
+    ignore_whitespace: bool,
 ) -> Result<String, String> {
-    run_git(&path, &["diff", "--no-color", &base, "--", &file]).await
+    run_git(
+        &path,
+        &with_ws(
+            vec!["diff", "--no-color", &base, "--", &file],
+            ignore_whitespace,
+        ),
+    )
+    .await
 }
 
 #[tauri::command]
@@ -243,39 +323,50 @@ pub async fn diff_commit_file(
     path: String,
     sha: String,
     file: String,
+    ignore_whitespace: bool,
 ) -> Result<String, String> {
     run_git(
         &path,
-        &[
-            "diff-tree",
-            "-r",
-            "--root",
-            "--no-commit-id",
-            "-p",
-            "--no-color",
-            &sha,
-            "--",
-            &file,
-        ],
+        &with_ws(
+            vec![
+                "diff-tree",
+                "-r",
+                "--root",
+                "--no-commit-id",
+                "-p",
+                "--no-color",
+                &sha,
+                "--",
+                &file,
+            ],
+            ignore_whitespace,
+        ),
     )
     .await
 }
 
 #[tauri::command]
-pub async fn diff_commit_all(path: String, sha: String) -> Result<String, String> {
+pub async fn diff_commit_all(
+    path: String,
+    sha: String,
+    ignore_whitespace: bool,
+) -> Result<String, String> {
     run_git(
         &path,
-        &[
-            "diff-tree",
-            "-r",
-            "--root",
-            "--no-commit-id",
-            "-p",
-            "--no-color",
-            "-M",
-            "-C",
-            &sha,
-        ],
+        &with_ws(
+            vec![
+                "diff-tree",
+                "-r",
+                "--root",
+                "--no-commit-id",
+                "-p",
+                "--no-color",
+                "-M",
+                "-C",
+                &sha,
+            ],
+            ignore_whitespace,
+        ),
     )
     .await
 }

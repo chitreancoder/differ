@@ -22,6 +22,7 @@ type Persisted = {
   commentMode: boolean;
   comments: Record<string, ReviewComment[]>;
   themePreference: ThemePreference;
+  ignoreWhitespace: boolean;
 };
 
 export async function loadPersisted(): Promise<void> {
@@ -42,6 +43,8 @@ export async function loadPersisted(): Promise<void> {
     (await store.get<Record<string, ReviewComment[]>>("comments")) ?? {};
   const themePreference =
     (await store.get<ThemePreference>("themePreference")) ?? "system";
+  const ignoreWhitespace =
+    (await store.get<boolean>("ignoreWhitespace")) ?? false;
 
   // Validate each repo silently in parallel; mark missing if open fails.
   await Promise.all(
@@ -68,6 +71,7 @@ export async function loadPersisted(): Promise<void> {
     commentMode,
     comments,
     themePreference,
+    ignoreWhitespace,
   });
 }
 
@@ -93,6 +97,7 @@ export function startPersistSubscription(): () => void {
     await store.set("commentMode", state.commentMode);
     await store.set("comments", state.comments);
     await store.set("themePreference", state.themePreference);
+    await store.set("ignoreWhitespace", state.ignoreWhitespace);
     await store.save();
   };
 
@@ -108,7 +113,8 @@ export function startPersistSubscription(): () => void {
       s.compare !== prev.compare ||
       s.commentMode !== prev.commentMode ||
       s.comments !== prev.comments ||
-      s.themePreference !== prev.themePreference;
+      s.themePreference !== prev.themePreference ||
+      s.ignoreWhitespace !== prev.ignoreWhitespace;
     if (!relevantChanged) return;
     pendingState = {
       repos: s.repos,
@@ -121,6 +127,7 @@ export function startPersistSubscription(): () => void {
       commentMode: s.commentMode,
       comments: s.comments,
       themePreference: s.themePreference,
+      ignoreWhitespace: s.ignoreWhitespace,
     };
     if (!saveScheduled) {
       saveScheduled = true;

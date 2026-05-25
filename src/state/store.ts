@@ -31,6 +31,7 @@ type State = {
   commentMode: boolean;
   comments: Record<string, ReviewComment[]>;
   themePreference: ThemePreference;
+  ignoreWhitespace: boolean;
   hydrated: boolean;
 };
 
@@ -75,6 +76,8 @@ type Actions = {
   markCommentsSent: (scope: string, ids: string[]) => void;
   setThemePreference: (p: ThemePreference) => void;
   cycleThemePreference: () => void;
+  setIgnoreWhitespace: (on: boolean) => void;
+  toggleIgnoreWhitespace: () => void;
 };
 
 let toastSeq = 0;
@@ -102,6 +105,7 @@ export const useStore = create<State & Actions>((set) => ({
   commentMode: false,
   comments: {},
   themePreference: "system",
+  ignoreWhitespace: false,
   hydrated: false,
 
   hydrate: (data) => set((s) => ({ ...s, ...data, hydrated: true })),
@@ -259,4 +263,7 @@ export const useStore = create<State & Actions>((set) => ({
             ? "dark"
             : "system",
     })),
+  setIgnoreWhitespace: (on) => set({ ignoreWhitespace: on }),
+  toggleIgnoreWhitespace: () =>
+    set((s) => ({ ignoreWhitespace: !s.ignoreWhitespace })),
 }));

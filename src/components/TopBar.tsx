@@ -25,6 +25,8 @@ export function TopBar() {
   const toggleCommentMode = useStore((s) => s.toggleCommentMode);
   const themePreference = useStore((s) => s.themePreference);
   const setThemePreference = useStore((s) => s.setThemePreference);
+  const ignoreWhitespace = useStore((s) => s.ignoreWhitespace);
+  const toggleIgnoreWhitespace = useStore((s) => s.toggleIgnoreWhitespace);
   const setBranchPickerKind = useStore((s) => s.setBranchPickerKind);
   const fetching = useStore((s) =>
     activeRepoPath ? !!s.fetchingRepos[activeRepoPath] : false,
@@ -117,6 +119,13 @@ export function TopBar() {
       )}
 
       <div className="topbar-tools">
+        <button
+          className={`btn-toggle ${ignoreWhitespace ? "active" : ""}`}
+          onClick={() => toggleIgnoreWhitespace()}
+          title="Ignore whitespace (w) — pass -w to git diff"
+        >
+          ⌴
+        </button>
         <button
           className={`btn-toggle btn-comment-mode ${commentMode ? "active" : ""}`}
           onClick={() => toggleCommentMode()}

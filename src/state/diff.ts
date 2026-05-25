@@ -31,6 +31,7 @@ export function useDiffFiles(
   const [error, setError] = useState<string | null>(null);
 
   const refreshCounter = useStore((s) => s.refreshCounter);
+  const ignoreWhitespace = useStore((s) => s.ignoreWhitespace);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,16 +46,19 @@ export function useDiffFiles(
       ? invoke<FileEntry[]>("diff_commit_name_status", {
           path: repoPath,
           sha: selectedCommit,
+          ignoreWhitespace,
         })
       : isWorkingTree(compare)
         ? invoke<FileEntry[]>("diff_working_tree_name_status", {
             path: repoPath,
             base,
+            ignoreWhitespace,
           })
         : invoke<FileEntry[]>("diff_name_status", {
             path: repoPath,
             base,
             compare,
+            ignoreWhitespace,
           });
     promise
       .then((list) => {
@@ -75,7 +79,7 @@ export function useDiffFiles(
     return () => {
       cancelled = true;
     };
-  }, [repoPath, base, compare, selectedCommit, refreshCounter]);
+  }, [repoPath, base, compare, selectedCommit, refreshCounter, ignoreWhitespace]);
 
   return { files, loading, error };
 }

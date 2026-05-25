@@ -30,10 +30,12 @@ export function fullDiffKey(
   base: string,
   compare: string,
   selectedCommit: string | null,
+  ignoreWhitespace: boolean,
 ): Key {
+  const ws = ignoreWhitespace ? "|w" : "";
   return selectedCommit
-    ? `${repoPath}|commit|${selectedCommit}`
-    : `${repoPath}|${base}...${compare}`;
+    ? `${repoPath}|commit|${selectedCommit}${ws}`
+    : `${repoPath}|${base}...${compare}${ws}`;
 }
 
 /**
@@ -48,9 +50,10 @@ export function useFullDiff(
   selectedCommit: string | null,
 ): { patch: string | null; loading: boolean; error: string | null } {
   const refreshCounter = useStore((s) => s.refreshCounter);
+  const ignoreWhitespace = useStore((s) => s.ignoreWhitespace);
   const key =
     repoPath && base && compare
-      ? fullDiffKey(repoPath, base, compare, selectedCommit)
+      ? fullDiffKey(repoPath, base, compare, selectedCommit, ignoreWhitespace)
       : null;
   const [patch, setPatch] = useState<string | null>(
     key ? (cacheGet(key) ?? null) : null,
@@ -78,10 +81,20 @@ export function useFullDiff(
       ? invoke<string>("diff_commit_all", {
           path: repoPath,
           sha: selectedCommit,
+          ignoreWhitespace,
         })
       : isWorkingTree(compare)
-        ? invoke<string>("diff_working_tree_all", { path: repoPath, base })
-        : invoke<string>("diff_all", { path: repoPath, base, compare });
+        ? invoke<string>("diff_working_tree_all", {
+            path: repoPath,
+            base,
+            ignoreWhitespace,
+          })
+        : invoke<string>("diff_all", {
+            path: repoPath,
+            base,
+            compare,
+            ignoreWhitespace,
+          });
     promise
       .then((text) => {
         if (cancelled) return;

@@ -22,6 +22,7 @@ export function CommandPalette() {
   const toggleDiffStyle = useStore((s) => s.toggleDiffStyle);
   const toggleCommentMode = useStore((s) => s.toggleCommentMode);
   const setThemePreference = useStore((s) => s.setThemePreference);
+  const toggleIgnoreWhitespace = useStore((s) => s.toggleIgnoreWhitespace);
   const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -173,6 +174,15 @@ export function CommandPalette() {
               >
                 Toggle comment mode{" "}
                 <span className="palette-shortcut">c</span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => {
+                  toggleIgnoreWhitespace();
+                  close();
+                }}
+              >
+                Toggle ignore whitespace{" "}
+                <span className="palette-shortcut">w</span>
               </Command.Item>
               <Command.Item
                 value="theme system follow auto"

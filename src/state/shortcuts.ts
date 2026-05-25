@@ -152,6 +152,12 @@ export function useShortcuts() {
         return;
       }
 
+      if (lower === "w") {
+        e.preventDefault();
+        store.toggleIgnoreWhitespace();
+        return;
+      }
+
       if (e.key === "?") {
         e.preventDefault();
         store.toggleShortcuts();
