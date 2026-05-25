@@ -1,0 +1,53 @@
+/* ----------------------------------------------------------------------
+ * Design tokens — colors, typography defaults, layout dimensions.
+ *
+ * Imported from main.tsx before App.css so the variables defined here are
+ * available everywhere downstream. Kept separate from App.css so the
+ * theme/dark-mode story is editable without scrolling past component CSS.
+ * ---------------------------------------------------------------------- */
+
+:root {
+  --bg: #ffffff;
+  --bg-elevated: #fafafa;
+  --bg-hover: #f0f0f0;
+  --bg-active: #e8e8e8;
+  --fg: #0f0f0f;
+  --fg-muted: #6b7280;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --accent: #2563eb;
+  --added: #16a34a;
+  --deleted: #dc2626;
+  --modified: #ca8a04;
+  --topbar-h: 52px;
+  --statusbar-h: 26px;
+  --sidebar-w: 240px;
+  --tree-w: 280px;
+
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--fg);
+  background-color: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-theme="dark"] {
+  --bg: #1a1a1a;
+  --bg-elevated: #222222;
+  --bg-hover: #2a2a2a;
+  --bg-active: #333333;
+  --fg: #e5e7eb;
+  --fg-muted: #9ca3af;
+  --border: #2e2e2e;
+  --border-strong: #3a3a3a;
+  --accent: #3b82f6;
+  --added: #22c55e;
+  --deleted: #ef4444;
+  --modified: #eab308;
+}
