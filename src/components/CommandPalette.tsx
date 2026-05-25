@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { Command } from "cmdk";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useStore } from "@/state/store";
+import { useAutoFocus, useEscapeKey } from "@/hooks";
 import { fetchRemote, refreshAll } from "@/state/refresh";
 import { pickAndAddRepo } from "@/state/repoActions";
 import {
@@ -30,23 +31,9 @@ export function CommandPalette() {
   const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        setOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, setOpen]);
+  useAutoFocus(inputRef, open);
+  const closePalette = useCallback(() => setOpen(false), [setOpen]);
+  useEscapeKey(closePalette, open);
 
   if (!open) return null;
 

@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { pickAndAddRepo, addRepoByPath } from "@/state/repoActions";
 import { useStore } from "@/state/store";
+import { useAutoFocus } from "@/hooks";
 import iconUrl from "@/assets/icon.png";
 
 /**
@@ -95,9 +96,7 @@ function CloneModal({ onClose }: { onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pushToast = useStore((s) => s.pushToast);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  useAutoFocus(inputRef);
 
   // Stream git's progress output (emitted from the Rust clone_repo command as
   // `clone-progress` events) into a single live status line. Mounted once for

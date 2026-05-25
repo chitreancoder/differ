@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useStore } from "@/state/store";
+import { useClickOutside, useEscapeKey } from "@/hooks";
 import type { ThemePreference } from "@/types";
 
 const THEME_CHOICES: { value: ThemePreference; label: string }[] = [
@@ -27,27 +28,13 @@ export function SettingsPanel() {
   const ignoreWhitespace = useStore((s) => s.ignoreWhitespace);
   const toggleIgnoreWhitespace = useStore((s) => s.toggleIgnoreWhitespace);
 
-  // Close on outside click or Escape.
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current) return;
-      if (!rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        setOpen(false);
-        buttonRef.current?.focus();
-      }
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
+  const closeAndRefocus = useCallback(() => {
+    setOpen(false);
+    buttonRef.current?.focus();
+  }, []);
+  useClickOutside(rootRef, close, open);
+  useEscapeKey(closeAndRefocus, open);
 
   return (
     <div className="settings-menu" ref={rootRef}>

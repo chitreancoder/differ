@@ -3,6 +3,7 @@ import type { CodeViewHandle } from "@pierre/diffs/react";
 import type { FileDiffMetadata, SelectionSide } from "@pierre/diffs";
 import type { ReviewComment } from "@/types";
 import { useStore } from "@/state/store";
+import { useAutoFocus, useDebouncedValue } from "@/hooks";
 
 type Match = {
   file: string;
@@ -88,14 +89,9 @@ export function DiffSearch({ fileDiffs, fileOrder, viewRef }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [index, setIndex] = useState(0);
 
-  // Debounce the query so big patches don't re-scan on every keystroke.
-  // 150ms is the sweet spot — still feels responsive, halves the scan count
-  // for typical typing speeds vs the previous 80ms.
-  const [debouncedQuery, setDebouncedQuery] = useState(query);
-  useEffect(() => {
-    const t = window.setTimeout(() => setDebouncedQuery(query), 150);
-    return () => window.clearTimeout(t);
-  }, [query]);
+  // 150ms is the sweet spot — still feels responsive, halves the re-scan
+  // rate for typical typing speeds on big patches.
+  const debouncedQuery = useDebouncedValue(query, 150);
 
   const matches = useMemo(
     () => findMatches(fileDiffs, fileOrder, debouncedQuery.trim()),
@@ -111,10 +107,7 @@ export function DiffSearch({ fileDiffs, fileOrder, viewRef }: Props) {
     setIndex((i) => Math.max(0, Math.min(i, matches.length - 1)));
   }, [matches]);
 
-  // Auto-focus the input when opened.
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 0);
-  }, [open]);
+  useAutoFocus(inputRef, open);
 
   // Jump to current match.
   useEffect(() => {
