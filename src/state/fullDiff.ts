@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { isWorkingTree } from "@/types";
 import { useStore } from "@/state/store";
+import { useDebouncedValue } from "@/hooks";
 
 type Key = string;
 const CACHE_LIMIT = 20;
@@ -55,7 +56,12 @@ export function useFullDiff(
   selectedCommit: string | null,
 ): { patch: string | null; loading: boolean; error: string | null } {
   const refreshCounter = useStore((s) => s.refreshCounter);
-  const ignoreWhitespace = useStore((s) => s.ignoreWhitespace);
+  // Debounce so rapid toggles (e.g. holding `w`) coalesce into one refetch.
+  // See state/diff.ts for the same rationale.
+  const ignoreWhitespace = useDebouncedValue(
+    useStore((s) => s.ignoreWhitespace),
+    150,
+  );
   const key =
     repoPath && base && compare
       ? fullDiffKey(repoPath, base, compare, selectedCommit, ignoreWhitespace)

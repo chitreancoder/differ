@@ -9,6 +9,7 @@ import type { FileEntry } from "@/types";
 import { isWorkingTree } from "@/types";
 import { useStore } from "@/state/store";
 import { rememberCommitFiles } from "@/state/commitStats";
+import { useDebouncedValue } from "@/hooks";
 
 export type TreeNode =
   | {
@@ -37,7 +38,13 @@ export function useDiffFiles(
   const [error, setError] = useState<string | null>(null);
 
   const refreshCounter = useStore((s) => s.refreshCounter);
-  const ignoreWhitespace = useStore((s) => s.ignoreWhitespace);
+  // Debounce so a rapid double-toggle (or holding `w` down) doesn't fire
+  // back-to-back git invocations that would just settle on the original value
+  // anyway. 150ms is well under the "did the toggle do something?" threshold.
+  const ignoreWhitespace = useDebouncedValue(
+    useStore((s) => s.ignoreWhitespace),
+    150,
+  );
 
   useEffect(() => {
     let cancelled = false;
