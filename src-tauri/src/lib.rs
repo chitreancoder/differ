@@ -5,7 +5,7 @@ use git::{
     clone_repo, diff_all, diff_commit_all, diff_commit_file, diff_commit_name_status, diff_file,
     diff_name_status, diff_working_tree_all, diff_working_tree_file,
     diff_working_tree_name_status, find_merge_base, init_repo, list_branches, list_commits,
-    repo_fetch, validate_repo,
+    repo_fetch, validate_refs, validate_repo,
 };
 use review::{claude_command_status, setup_claude_command, write_review_file};
 
@@ -17,6 +17,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .invoke_handler(tauri::generate_handler![
             validate_repo,
+            validate_refs,
             clone_repo,
             init_repo,
             list_branches,

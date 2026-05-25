@@ -24,6 +24,16 @@ pub struct BranchInfo {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RefValidation {
+    /// `true` if the persisted base branch still resolves; `null` if no base
+    /// was provided to validate.
+    pub base_valid: Option<bool>,
+    pub compare_valid: Option<bool>,
+    pub commit_valid: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CommitInfo {
     pub sha: String,
     pub short_sha: String,

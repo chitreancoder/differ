@@ -5,7 +5,7 @@ use tauri::Emitter;
 use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 
-use super::types::{BranchInfo, CommitInfo, RepoInfo};
+use super::types::{BranchInfo, CommitInfo, RefValidation, RepoInfo};
 
 fn open(path: &str) -> Result<Repository, String> {
     Repository::open(path).map_err(|e| format!("not a git repository: {}", e.message()))
@@ -183,6 +183,37 @@ pub async fn init_repo(path: String) -> Result<(), String> {
     // everywhere else, so no extra process spawn and no subtle CRLF surprises.
     Repository::init(&target).map_err(|e| format!("git init: {}", e.message()))?;
     Ok(())
+}
+
+/// `compare` may be a UI sentinel meaning "working tree" — never a real ref.
+const WORKING_TREE_REF: &str = ":working-tree";
+
+/// Check whether a ref name still resolves in the repo. The working-tree
+/// sentinel always resolves (the working tree exists by definition).
+fn ref_resolves(repo: &Repository, name: &str) -> bool {
+    if name == WORKING_TREE_REF {
+        return true;
+    }
+    repo.revparse_single(name).is_ok()
+}
+
+/// Per-repo refs validation in a single round-trip. Caller passes optional
+/// (base, compare, commit); we return whether each *that was provided* still
+/// resolves. Used at hydration to detect stale persisted selections (e.g. the
+/// user deleted the feature branch between sessions).
+#[tauri::command]
+pub fn validate_refs(
+    path: String,
+    base: Option<String>,
+    compare: Option<String>,
+    commit: Option<String>,
+) -> Result<RefValidation, String> {
+    let repo = open(&path)?;
+    Ok(RefValidation {
+        base_valid: base.map(|b| ref_resolves(&repo, &b)),
+        compare_valid: compare.map(|c| ref_resolves(&repo, &c)),
+        commit_valid: commit.map(|sha| repo.revparse_single(&sha).is_ok()),
+    })
 }
 
 fn resolve_default_branch(repo: &Repository) -> Option<String> {

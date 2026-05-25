@@ -8,5 +8,6 @@ pub use diff::{
     diff_working_tree_name_status, repo_fetch,
 };
 pub use meta::{
-    clone_repo, find_merge_base, init_repo, list_branches, list_commits, validate_repo,
+    clone_repo, find_merge_base, init_repo, list_branches, list_commits, validate_refs,
+    validate_repo,
 };

@@ -64,6 +64,46 @@ export async function loadPersisted(): Promise<void> {
     }),
   );
 
+  // For every repo that opened cleanly, cross-check its persisted base /
+  // compare against the live ref set. A branch deleted or force-renamed
+  // between sessions otherwise resurrects as a confusing "Diff failed: ref
+  // not found" toast deep into the workflow.
+  const staleByRepo = new Map<string, string[]>();
+  await Promise.all(
+    repos
+      .filter((r) => !r.missing)
+      .map(async (r) => {
+        const b = base[r.path];
+        const c = compare[r.path];
+        if (!b && !c) return;
+        try {
+          const result = await invoke<{
+            baseValid: boolean | null;
+            compareValid: boolean | null;
+            commitValid: boolean | null;
+          }>("validate_refs", {
+            path: r.path,
+            base: b ?? null,
+            compare: c ?? null,
+            commit: null,
+          });
+          const stale: string[] = [];
+          if (b && result.baseValid === false) {
+            stale.push(b);
+            delete base[r.path];
+          }
+          if (c && result.compareValid === false) {
+            stale.push(c);
+            delete compare[r.path];
+          }
+          if (stale.length) staleByRepo.set(r.name, stale);
+        } catch {
+          /* validation itself failed — leave the persisted refs alone and
+             let the downstream diff path produce its own error toast. */
+        }
+      }),
+  );
+
   useStore.getState().hydrate({
     repos,
     activeRepoPath: repos.some((r) => r.path === activeRepoPath)
@@ -79,6 +119,16 @@ export async function loadPersisted(): Promise<void> {
     themePreference,
     ignoreWhitespace,
   });
+
+  // Surface the cleared selections — quoting the branch names so the user can
+  // immediately see what they need to re-pick.
+  for (const [repoName, stale] of staleByRepo) {
+    const list = stale.map((n) => `'${n}'`).join(", ");
+    const noun = stale.length === 1 ? "Branch" : "Branches";
+    useStore
+      .getState()
+      .pushToast(`${noun} ${list} no longer exist in ${repoName}`, "info");
+  }
 }
 
 export function startPersistSubscription(): () => void {
