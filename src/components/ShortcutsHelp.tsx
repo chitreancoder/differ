@@ -10,6 +10,7 @@ const GROUPS: Array<[string, Array<[string, string]>]> = [
       ["G", "Last file"],
       ["⌘ P", "Jump to file…"],
       ["⌘ K", "Command palette"],
+      ["⌘ F", "Find in diff"],
     ],
   ],
   [
@@ -17,12 +18,16 @@ const GROUPS: Array<[string, Array<[string, string]>]> = [
     [
       ["x", "Toggle reviewed"],
       ["n", "Next unreviewed"],
+      ["c", "Toggle comment mode"],
+      ["f", "Files with comments only"],
     ],
   ],
   [
     "View",
     [
       ["d  ⌘ L", "Toggle inline / split"],
+      ["w", "Ignore whitespace"],
+      ["⌘ ⇧ T", "Cycle theme (Auto / Light / Dark)"],
       ["⌘ \\", "Toggle sidebar"],
       ["⌘ R", "Fetch & refresh"],
       ["?", "This cheatsheet"],
