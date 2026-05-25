@@ -28,11 +28,21 @@ import { truncateSnippet } from "../state/review";
 /**
  * Injected *into each file's Shadow DOM* via the `unsafeCSS` option — plain
  * App.css can't reach the header because it lives behind the shadow boundary.
- * Promoting the sticky header to its own compositor layer stops WKWebView
- * (Tauri/macOS) from repainting it out of sync with the scrolling code.
+ *
+ * - Sticky-header fix: promote the sticky header to its own compositor layer
+ *   so WKWebView (Tauri/macOS) doesn't repaint it out of sync with scrolling.
+ * - Commented-dot: tiny gutter marker stamped by `onPostRender` for every line
+ *   with a comment. `position:relative` on the gutter cell lets us anchor the
+ *   absolute-positioned dot. `light-dark()` keeps it readable in both themes.
  */
-const STICKY_HEADER_FIX =
-  "[data-diffs-header][data-sticky]{will-change:transform;transform:translateZ(0)}";
+const SHADOW_CSS = [
+  "[data-diffs-header][data-sticky]{will-change:transform;transform:translateZ(0)}",
+  "[data-column-number]{position:relative}",
+  ".commented-dot{position:absolute;left:2px;top:50%;transform:translateY(-50%);" +
+    "width:6px;height:6px;border-radius:50%;" +
+    "background:light-dark(#d97706,#f59e0b);" +
+    "cursor:pointer;z-index:1}",
+].join("");
 
 export type CodeViewPaneHandle = {
   scrollToFile: (path: string) => void;
@@ -121,6 +131,70 @@ function fileHeaderVersion(
     }
   }
   return h;
+}
+
+/**
+ * Stamp a small dot in the line-number gutter for every line in every line-
+ * anchored comment of a file. Called from Pierre's `onPostRender`, runs per
+ * file after each render — the previous render's dots are gone with the old
+ * DOM, but we still clear residual `.commented-dot` first to be idempotent in
+ * the unlikely case Pierre re-uses the same gutter element. Clicking a dot
+ * calls `revealComment` so users can jump between comments visually.
+ *
+ * Split view: dots target the correct side via `[data-additions]` or
+ * `[data-deletions]`. Unified view collapses sides into one gutter — we
+ * best-effort match by line number; `data-line-type` isn't checked because
+ * unified shows just one number per row anyway.
+ */
+function stampCommentedDots(
+  node: HTMLElement,
+  instance: unknown,
+  comments: ReviewComment[],
+  detachedIds: Set<string>,
+  diffStyle: DiffStyle,
+  revealComment: (c: ReviewComment) => void,
+): void {
+  // `fileDiff` is `protected` on FileDiff — cast through unknown to read it.
+  const fileName = (instance as { fileDiff?: { name?: string } }).fileDiff?.name;
+  if (!fileName) return;
+  const root = node.shadowRoot;
+  if (!root) return;
+
+  // Idempotent restamp.
+  root.querySelectorAll(".commented-dot").forEach((d) => d.remove());
+
+  const fileComments = comments.filter(
+    (c) => c.file === fileName && c.range && !detachedIds.has(c.id),
+  );
+  if (fileComments.length === 0) return;
+
+  for (const c of fileComments) {
+    if (!c.range) continue;
+    const libSide = toLibSide(c.range.side);
+    const sideSel =
+      diffStyle === "unified"
+        ? "[data-unified]"
+        : libSide === "deletions"
+          ? "[data-deletions]"
+          : "[data-additions]";
+    for (let line = c.range.start; line <= c.range.end; line++) {
+      const cells = root.querySelectorAll(
+        `${sideSel} [data-gutter] [data-column-number="${line}"]`,
+      );
+      cells.forEach((cell) => {
+        if ((cell as HTMLElement).querySelector(":scope > .commented-dot"))
+          return;
+        const dot = document.createElement("span");
+        dot.className = "commented-dot";
+        dot.title = "Commented — click to highlight";
+        dot.addEventListener("click", (e) => {
+          e.stopPropagation();
+          revealComment(c);
+        });
+        (cell as HTMLElement).appendChild(dot);
+      });
+    }
+  }
 }
 
 /** True if the comment is still anchored: a file-level note as long as the
@@ -564,7 +638,17 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
               // — smoothest scrolling. Long lines scroll horizontally per file.
               overflow: "scroll",
               stickyHeaders: true,
-              unsafeCSS: STICKY_HEADER_FIX,
+              unsafeCSS: SHADOW_CSS,
+              onPostRender: (node, instance) => {
+                stampCommentedDots(
+                  node,
+                  instance,
+                  comments,
+                  detachedIds,
+                  diffStyle,
+                  revealComment,
+                );
+              },
             }}
           />
         </div>
