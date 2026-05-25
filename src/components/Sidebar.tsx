@@ -7,13 +7,42 @@ export function Sidebar() {
   const setActiveRepo = useStore((s) => s.setActiveRepo);
   const removeRepo = useStore((s) => s.removeRepo);
   const collapsed = useStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useStore((s) => s.toggleSidebar);
 
-  if (collapsed) return null;
+  // Collapsed state still mounts a thin strip so users have a visible affordance
+  // to re-open the panel (in addition to ⌘\). Empty path on the icon avoids
+  // any "where did my sidebar go?" moments.
+  if (collapsed) {
+    return (
+      <aside
+        className="sidebar collapsed"
+        aria-label="Repositories (collapsed)"
+      >
+        <button
+          className="sidebar-expand"
+          onClick={() => toggleSidebar()}
+          title="Show repositories (⌘\\)"
+          aria-label="Show repositories"
+        >
+          ›
+        </button>
+      </aside>
+    );
+  }
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
+        <button
+          className="btn-icon sidebar-collapse"
+          onClick={() => toggleSidebar()}
+          title="Hide repositories (⌘\\)"
+          aria-label="Hide repositories"
+        >
+          ☰
+        </button>
         <span className="sidebar-title">Repositories</span>
+        <span className="sidebar-header-spacer" />
         <button
           className="btn-icon"
           onClick={pickAndAddRepo}

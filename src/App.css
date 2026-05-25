@@ -88,7 +88,12 @@ button:disabled {
   overflow: hidden;
 }
 
-.app:has(.sidebar.collapsed),
+.app:has(.sidebar.collapsed) {
+  /* Collapsed mode keeps a narrow always-on strip so users have a visible
+     affordance to re-open the panel without needing the ⌘\ shortcut. */
+  grid-template-columns: 28px 1fr;
+}
+
 .app:not(:has(.sidebar)) {
   grid-template-columns: 1fr;
 }
@@ -113,10 +118,43 @@ button:disabled {
 .sidebar-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
   height: var(--topbar-h);
+}
+
+.sidebar-header-spacer {
+  flex: 1;
+}
+
+.sidebar-collapse {
+  /* Visually deemphasized — the affordance, not the headline. */
+  color: var(--fg-muted);
+}
+
+/* Collapsed sidebar — just the thin re-open strip. */
+.sidebar.collapsed {
+  align-items: center;
+  padding-top: 12px;
+}
+
+.sidebar-expand {
+  width: 100%;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.sidebar-expand:hover {
+  color: var(--fg);
+  background: var(--bg-hover);
 }
 
 .sidebar-title {
