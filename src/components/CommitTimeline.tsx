@@ -2,26 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useCommits } from "@/state/commits";
 import { useStore } from "@/state/store";
+import { Popover } from "@/components/Popover";
 import { isWorkingTree, type Commit, type FileEntry } from "@/types";
 import { relativeTimeFromSeconds } from "@/utils/time";
 import { nameInitials } from "@/utils/avatar";
 
 const TOOLTIP_DELAY_MS = 200;
 const TOOLTIP_WIDTH = 400;
-const TOOLTIP_GAP = 8; // px between chip and tooltip
-const VIEWPORT_MARGIN = 8; // px from window edges
 
 type Props = {
   repoPath: string;
   base: string | null;
   compare: string | null;
-};
-
-type TooltipState = {
-  commit: Commit;
-  left: number;
-  top: number;
-  arrowLeft: number;
 };
 
 type CommitStats = {
@@ -99,7 +91,11 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
   const { commits, loading } = useCommits(repoPath, base, compare);
   const stripRef = useRef<HTMLDivElement>(null);
   const hoverTimer = useRef<number | null>(null);
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  // The Popover anchors against this ref; we mutate `.current` whenever the
+  // user hovers a different chip, and re-render with a `placementKey` so the
+  // Popover recomputes its viewport position.
+  const hoveredChipRef = useRef<HTMLElement | null>(null);
+  const [hovered, setHovered] = useState<Commit | null>(null);
   // Local filter — case-insensitive substring across sha + message + author.
   // Reset whenever the comparison changes so a stale query doesn't hide every
   // commit in the new range.
@@ -121,26 +117,8 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
   const showTooltip = (commit: Commit, target: HTMLElement) => {
     if (hoverTimer.current != null) window.clearTimeout(hoverTimer.current);
     hoverTimer.current = window.setTimeout(() => {
-      const rect = target.getBoundingClientRect();
-      // Clamp the tooltip's left so it stays on-screen, and place its arrow
-      // under the chip's horizontal center (clamped inside the tooltip too).
-      const chipCenterX = rect.left + rect.width / 2;
-      const maxLeft =
-        window.innerWidth - TOOLTIP_WIDTH - VIEWPORT_MARGIN;
-      const left = Math.max(
-        VIEWPORT_MARGIN,
-        Math.min(maxLeft, chipCenterX - 60),
-      );
-      const arrowLeft = Math.max(
-        18,
-        Math.min(TOOLTIP_WIDTH - 18, chipCenterX - left),
-      );
-      setTooltip({
-        commit,
-        left,
-        top: rect.bottom + TOOLTIP_GAP,
-        arrowLeft,
-      });
+      hoveredChipRef.current = target;
+      setHovered(commit);
       hoverTimer.current = null;
     }, TOOLTIP_DELAY_MS);
   };
@@ -149,7 +127,8 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
       window.clearTimeout(hoverTimer.current);
       hoverTimer.current = null;
     }
-    setTooltip(null);
+    hoveredChipRef.current = null;
+    setHovered(null);
   };
   useEffect(
     () => () => {
@@ -273,32 +252,40 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
           );
         })}
       </div>
-      {tooltip && (
-        <CommitTooltip
-          commit={tooltip.commit}
-          left={tooltip.left}
-          top={tooltip.top}
-          arrowLeft={tooltip.arrowLeft}
-          repoPath={repoPath}
-          ignoreWhitespace={ignoreWhitespace}
-        />
-      )}
+      <Popover
+        open={!!hovered}
+        triggerRef={hoveredChipRef}
+        placementKey={hovered?.sha ?? null}
+        onClose={hideTooltip}
+        width={TOOLTIP_WIDTH}
+        showArrow
+        dismissOnOutsideClick={false}
+        dismissOnEscape={false}
+        role="tooltip"
+        className="commit-tooltip"
+      >
+        {hovered && (
+          <CommitTooltipBody
+            commit={hovered}
+            repoPath={repoPath}
+            ignoreWhitespace={ignoreWhitespace}
+          />
+        )}
+      </Popover>
     </>
   );
 }
 
-function CommitTooltip({
+/**
+ * Render-only body for the hovered-commit tooltip. Positioning and the arrow
+ * live in <Popover>; this just composes the header / stats / top-files.
+ */
+function CommitTooltipBody({
   commit,
-  left,
-  top,
-  arrowLeft,
   repoPath,
   ignoreWhitespace,
 }: {
   commit: Commit;
-  left: number;
-  top: number;
-  arrowLeft: number;
   repoPath: string;
   ignoreWhitespace: boolean;
 }) {
@@ -322,12 +309,7 @@ function CommitTooltip({
   }, [commit.sha, repoPath, ignoreWhitespace, stats]);
 
   return (
-    <div
-      className="commit-tooltip"
-      role="tooltip"
-      style={{ left, top, width: TOOLTIP_WIDTH }}
-    >
-      <div className="commit-tooltip-arrow" style={{ left: arrowLeft }} />
+    <>
       <div className="commit-tooltip-header">
         <span className="commit-tooltip-sha-pill">{commit.shortSha}</span>
         <span className="commit-tooltip-dot">·</span>
@@ -379,7 +361,7 @@ function CommitTooltip({
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

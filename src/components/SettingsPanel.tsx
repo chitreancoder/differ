@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useStore } from "@/state/store";
-import { useClickOutside, useEscapeKey } from "@/hooks";
+import { Popover } from "@/components/Popover";
 import type { ThemePreference } from "@/types";
 
 const THEME_CHOICES: { value: ThemePreference; label: string }[] = [
@@ -12,13 +12,12 @@ const THEME_CHOICES: { value: ThemePreference; label: string }[] = [
 /**
  * Top-bar Settings dropdown. Hosts the small, low-frequency view prefs that
  * previously lived as standalone toggles (theme, diff style, whitespace) so
- * the top-bar can stay focused on the actual review workflow. Keyboard
- * shortcuts and command-palette entries are unchanged — the menu is just an
- * additional discovery surface.
+ * the top-bar stays focused on the actual review workflow. Keyboard shortcuts
+ * and command-palette entries are unchanged — the menu is just an additional
+ * discovery surface.
  */
 export function SettingsPanel() {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const themePreference = useStore((s) => s.themePreference);
@@ -28,16 +27,13 @@ export function SettingsPanel() {
   const ignoreWhitespace = useStore((s) => s.ignoreWhitespace);
   const toggleIgnoreWhitespace = useStore((s) => s.toggleIgnoreWhitespace);
 
-  const close = useCallback(() => setOpen(false), []);
-  const closeAndRefocus = useCallback(() => {
+  const close = useCallback(() => {
     setOpen(false);
     buttonRef.current?.focus();
   }, []);
-  useClickOutside(rootRef, close, open);
-  useEscapeKey(closeAndRefocus, open);
 
   return (
-    <div className="settings-menu" ref={rootRef}>
+    <>
       <button
         ref={buttonRef}
         className={`btn-toggle ${open ? "active" : ""}`}
@@ -62,60 +58,65 @@ export function SettingsPanel() {
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
       </button>
-      {open && (
-        <div className="settings-menu-panel" role="menu">
-          <SettingRow label="Theme" shortcut="⌘⇧T">
-            <div className="settings-segmented" role="radiogroup">
-              {THEME_CHOICES.map((c) => (
-                <button
-                  key={c.value}
-                  className={`settings-seg ${
-                    themePreference === c.value ? "active" : ""
-                  }`}
-                  onClick={() => setThemePreference(c.value)}
-                  role="radio"
-                  aria-checked={themePreference === c.value}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </SettingRow>
-
-          <SettingRow label="Diff style" shortcut="d  ⌘L">
-            <div className="settings-segmented" role="radiogroup">
+      <Popover
+        open={open}
+        triggerRef={buttonRef}
+        onClose={close}
+        width={280}
+        role="menu"
+        className="settings-menu-panel"
+      >
+        <SettingRow label="Theme" shortcut="⌘⇧T">
+          <div className="settings-segmented" role="radiogroup">
+            {THEME_CHOICES.map((c) => (
               <button
-                className={`settings-seg ${diffStyle === "split" ? "active" : ""}`}
-                onClick={() => setDiffStyle("split")}
+                key={c.value}
+                className={`settings-seg ${
+                  themePreference === c.value ? "active" : ""
+                }`}
+                onClick={() => setThemePreference(c.value)}
                 role="radio"
-                aria-checked={diffStyle === "split"}
+                aria-checked={themePreference === c.value}
               >
-                Split
+                {c.label}
               </button>
-              <button
-                className={`settings-seg ${diffStyle === "unified" ? "active" : ""}`}
-                onClick={() => setDiffStyle("unified")}
-                role="radio"
-                aria-checked={diffStyle === "unified"}
-              >
-                Unified
-              </button>
-            </div>
-          </SettingRow>
+            ))}
+          </div>
+        </SettingRow>
 
-          <SettingRow label="Ignore whitespace" shortcut="w">
+        <SettingRow label="Diff style" shortcut="d  ⌘L">
+          <div className="settings-segmented" role="radiogroup">
             <button
-              className={`settings-switch ${ignoreWhitespace ? "on" : ""}`}
-              onClick={() => toggleIgnoreWhitespace()}
-              role="switch"
-              aria-checked={ignoreWhitespace}
+              className={`settings-seg ${diffStyle === "split" ? "active" : ""}`}
+              onClick={() => setDiffStyle("split")}
+              role="radio"
+              aria-checked={diffStyle === "split"}
             >
-              <span className="settings-switch-thumb" />
+              Split
             </button>
-          </SettingRow>
-        </div>
-      )}
-    </div>
+            <button
+              className={`settings-seg ${diffStyle === "unified" ? "active" : ""}`}
+              onClick={() => setDiffStyle("unified")}
+              role="radio"
+              aria-checked={diffStyle === "unified"}
+            >
+              Unified
+            </button>
+          </div>
+        </SettingRow>
+
+        <SettingRow label="Ignore whitespace" shortcut="w">
+          <button
+            className={`settings-switch ${ignoreWhitespace ? "on" : ""}`}
+            onClick={() => toggleIgnoreWhitespace()}
+            role="switch"
+            aria-checked={ignoreWhitespace}
+          >
+            <span className="settings-switch-thumb" />
+          </button>
+        </SettingRow>
+      </Popover>
+    </>
   );
 }
 
