@@ -13,9 +13,8 @@ import { autoFetchOnce, refreshAll } from "@/state/refresh";
 import { useStore } from "@/state/store";
 import "@/App.css";
 
-// Three modal overlays that the user only sees after an explicit gesture
-// (⌘K, ?, branch slot click). Lazy-loaded so cmdk + the bigger modal
-// machinery doesn't sit in the initial bundle for users who never open them.
+// Lazy: only mount when first opened. cmdk + modal machinery isn't in
+// the initial bundle for users who never trigger them.
 const CommandPalette = lazy(() =>
   import("@/components/CommandPalette").then((m) => ({
     default: m.CommandPalette,
@@ -141,9 +140,7 @@ function App() {
   );
 }
 
-/** Mount the palette chunk only when it's open — the component itself reads
- *  paletteOpen from the store, but we gate mounting here so the lazy import
- *  is deferred until first ⌘K. */
+/** Mount-gate so the lazy import only resolves on first ⌘K. */
 function CommandPaletteSlot() {
   const open = useStore((s) => s.paletteOpen);
   if (!open) return null;

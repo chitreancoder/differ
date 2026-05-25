@@ -2,16 +2,10 @@ import { lazy, Suspense, useState } from "react";
 import { pickAndAddRepo } from "@/state/repoActions";
 import iconUrl from "@/assets/icon.png";
 
-// Lazy: the clone modal pulls in @tauri-apps/plugin-dialog + listen, neither
-// of which the typical first-launch user touches.
+// Lazy — pulls in @tauri-apps/plugin-dialog + listen.
 const CloneModal = lazy(() => import("@/components/CloneModal"));
 
-/**
- * First-run / no-repos landing screen. Communicates what Differ is (one
- * sentence), surfaces the two real entry points (pick a local repo, clone a
- * URL), makes the existing window-wide drop affordance visible, and teases a
- * couple of keyboard shortcuts so users start finding them.
- */
+/** First-run / no-repos landing screen. */
 export function Welcome() {
   const [cloning, setCloning] = useState(false);
   return (

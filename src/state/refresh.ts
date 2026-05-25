@@ -1,9 +1,6 @@
-/**
- * Cache invalidation + remote fetch orchestration. `refreshAll()` clears the
- * module-level caches (branches, commits, fullDiff, commit stats) and bumps
- * the store's refreshCounter so consumer hooks re-run. `fetchRemote()` runs
- * `git fetch` for one repo and then refreshes.
- */
+/** Cache invalidation + git-fetch orchestration. `refreshAll` clears the
+ *  module-level caches and bumps refreshCounter; `fetchRemote` runs
+ *  `git fetch` for one repo then refreshes. */
 import { invoke } from "@tauri-apps/api/core";
 import { clearBranchCache } from "@/state/branches";
 import { clearCommitsCache } from "@/state/commits";

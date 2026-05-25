@@ -1,13 +1,5 @@
-/**
- * Pure placement math for a "popover below trigger, arrow centered on
- * trigger" layout — separated from any DOM/React lifecycle so it's trivial to
- * unit-test and reuse across the Popover primitive, CommitTooltip, etc.
- *
- * Returns absolute viewport coords:
- *   - `left`/`top`: where to anchor the popover (clamped to stay on-screen)
- *   - `arrowLeft`: where to render the arrow inside the popover (so it lines
- *     up with the trigger's center, clamped to the popover's body)
- */
+/** Pure placement math for "popover below trigger, arrow centered on trigger".
+ *  Returns `{ left, top, arrowLeft }` clamped to the viewport. */
 
 export type PlacementInput = {
   trigger: { left: number; right: number; bottom: number };
@@ -35,8 +27,7 @@ export function computePopoverPlacement({
 }: PlacementInput): Placement {
   const triggerCenterX = (trigger.left + trigger.right) / 2;
   const maxLeft = window.innerWidth - popoverWidth - viewportMargin;
-  // Bias the popover so its left starts about 60px left of the trigger
-  // center — gives the arrow a natural offset from the popover's left edge.
+  // Bias 60px left of trigger center so the arrow doesn't hug the edge.
   const left = Math.max(
     viewportMargin,
     Math.min(maxLeft, triggerCenterX - 60),

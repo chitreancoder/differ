@@ -1,9 +1,5 @@
-/**
- * Central Zustand store. UI state (active repo, branch selections, comment
- * drafts, modals) lives here; data fetched from the Rust side (branches,
- * commits, diffs) is cached in the per-domain hook modules (state/branches.ts,
- * state/commits.ts, state/diff.ts, state/fullDiff.ts) and not duplicated here.
- */
+/** Central Zustand store — UI state only. Data fetched from Rust
+ *  (branches, commits, diffs) is cached in the per-domain hook modules. */
 import { create } from "zustand";
 import type {
   DiffStyle,
@@ -157,9 +153,8 @@ export const useStore = create<State & Actions>((set) => ({
   setDiffStyle: (style) => set({ diffStyle: style }),
   toggleDiffStyle: () =>
     set((s) => ({ diffStyle: s.diffStyle === "split" ? "unified" : "split" })),
-  // setBase/setCompare/swapBranches all clear `selectedCommit` for the repo:
-  // a commit selection only makes sense inside one specific comparison frame,
-  // so changing the frame must drop it. Callers don't need to do it manually.
+  // setBase/setCompare/swapBranches clear `selectedCommit` — a commit
+  // selection only makes sense inside one specific comparison frame.
   setBase: (repoPath, branch) =>
     set((s) => ({
       base: { ...s.base, [repoPath]: branch },

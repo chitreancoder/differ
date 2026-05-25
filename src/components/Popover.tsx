@@ -10,37 +10,25 @@ import { useEscapeKey } from "@/hooks";
 import { computePopoverPlacement } from "@/hooks/usePopoverPlacement";
 
 type Props = {
-  /** When false the popover is unmounted (so callers can drop heavy children). */
   open: boolean;
-  /** Element to anchor under. May be a mutated ref (e.g. last-hovered chip). */
   triggerRef: RefObject<HTMLElement | null>;
   /** Bump to force a placement recompute when the trigger element changes
-   *  identity without remounting (hover-tooltip case where we re-use the same
-   *  ref but point it at different chips). */
+   *  identity without remounting (e.g. hover tooltip re-pointing at chips). */
   placementKey?: string | number | null;
   onClose: () => void;
-  /** Popover body width — must match the rendered popover or the arrow drifts. */
   width?: number;
-  /** Vertical gap between trigger and popover. */
   gap?: number;
-  /** Render a small arrow pointing at the trigger. */
   showArrow?: boolean;
-  /** Mousedown anywhere outside the popover AND the trigger calls onClose. */
   dismissOnOutsideClick?: boolean;
   dismissOnEscape?: boolean;
-  /** Class applied to the popover's outer element — caller controls chrome. */
   className?: string;
-  /** ARIA role — "menu" for click-opened, "tooltip" for hover. */
+  /** "menu" for click-opened, "tooltip" for hover. */
   role?: string;
   children: ReactNode;
 };
 
-/**
- * Single primitive for floating-below-trigger UI. Owns: portal mounting,
- * fixed-viewport placement via computePopoverPlacement, optional arrow,
- * configurable dismiss (outside-click, Escape). The trigger element stays
- * in the parent's DOM; we only render the floating part here.
- */
+/** Portal-mounted popover anchored below `triggerRef` via
+ *  computePopoverPlacement. The trigger stays in the parent's DOM. */
 export function Popover({
   open,
   triggerRef,
@@ -62,9 +50,8 @@ export function Popover({
     arrowLeft: number;
   } | null>(null);
 
-  // Recompute placement whenever we open, the trigger changes identity, the
-  // window resizes, or anything in the page scrolls (the trigger may have
-  // shifted). `scroll` uses capture phase so we catch nested scroll containers.
+  // Recompute on open / trigger swap / resize / any scroll (the trigger
+  // may have moved). Capture phase catches nested scroll containers.
   useEffect(() => {
     if (!open) {
       setPlacement(null);
@@ -90,8 +77,8 @@ export function Popover({
     };
   }, [open, triggerRef, width, gap, placementKey]);
 
-  // Outside-click dismiss: exclude the trigger so its onClick can toggle
-  // close→open without us preempting it on mousedown.
+  // Exclude the trigger from outside-click so its onClick can toggle
+  // close→open without our mousedown firing first.
   useEffect(() => {
     if (!open || !dismissOnOutsideClick) return;
     const handler = (e: MouseEvent) => {

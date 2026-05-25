@@ -1,11 +1,7 @@
 import { useEffect, type RefObject } from "react";
 
-/**
- * Focus the referenced element whenever `active` becomes truthy. The
- * `setTimeout(0)` skip lets the element commit before focus is moved — needed
- * for modals that mount the input in the same render they open. When `active`
- * is true on mount, focus runs once after the first commit.
- */
+/** Focus `ref.current` when `active` becomes truthy. The `setTimeout(0)`
+ *  lets the element mount before focus is moved. */
 export function useAutoFocus(
   ref: RefObject<HTMLElement | null>,
   active: boolean = true,

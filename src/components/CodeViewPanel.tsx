@@ -39,15 +39,10 @@ import {
 } from "@/components/CodeViewCommentOverlay";
 import { nameInitials } from "@/utils/avatar";
 
-/**
- * CSS injected into each file's Shadow DOM via Pierre's `unsafeCSS` option —
- * plain App.css can't reach there.
- *
- *  - Sticky-header fix: promote the sticky header to its own compositor layer
- *    so WKWebView (Tauri/macOS) doesn't repaint it out of sync with scrolling.
- *  - Commented-dot: tiny gutter marker stamped by `onPostRender` for every
- *    line with a comment. `light-dark()` keeps it readable in both themes.
- */
+/** CSS injected into each file's Shadow DOM via Pierre's `unsafeCSS`.
+ *  - Sticky-header gets its own compositor layer so WKWebView doesn't
+ *    repaint it out of sync with scrolling.
+ *  - `.commented-dot` is stamped by `onPostRender` for commented lines. */
 function shadowCSS(commentMode: boolean): string {
   return [
     "[data-diffs-header][data-sticky]{will-change:transform;transform:translateZ(0)}",
@@ -61,12 +56,8 @@ function shadowCSS(commentMode: boolean): string {
   ].join("");
 }
 
-/**
- * Stamp a small dot in the line-number gutter for every line with a line-
- * anchored comment. Called per-file from Pierre's `onPostRender`. Idempotent
- * (clears any residual `.commented-dot` first) in case Pierre re-uses the
- * gutter element across renders.
- */
+/** Stamp gutter dots on commented lines. Idempotent (clears residual dots
+ *  first) in case Pierre re-uses the gutter element. */
 function stampCommentedDots(
   node: HTMLElement,
   instance: unknown,
@@ -91,8 +82,7 @@ function stampCommentedDots(
   for (const c of fileComments) {
     if (!c.range) continue;
     const libSide = toLibSide(c.range.side);
-    // Split view: target the correct side. Unified collapses sides into one
-    // gutter — match by line number alone.
+    // Unified collapses sides into one gutter; match by line number alone.
     const sideSel =
       diffStyle === "unified"
         ? "[data-unified]"
@@ -186,8 +176,7 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
       return map;
     }, [patch, scopeKey]);
 
-    // Stable CSS string — Pierre compares unsafeCSS by identity to decide
-    // whether to re-inject into each file's shadow DOM.
+    // Pierre identity-compares unsafeCSS to decide whether to re-inject.
     const unsafeCSS = useMemo(() => shadowCSS(commentMode), [commentMode]);
 
     const { detached, detachedIds, fileNotesByFile, items } =
@@ -215,10 +204,8 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
       [],
     );
 
-    // RAF-throttled scroll handler: figure out which file's header is anchored
-    // at the top of the viewport and notify the parent so the file tree's
-    // highlight follows the diff. Pierre fires onScroll a lot — without the
-    // RAF gate we'd churn the store on every wheel tick.
+    // RAF-throttled onScroll → parent so the tree highlight follows the
+    // diff. Pierre fires onScroll on every wheel tick.
     const scrollFrame = useRef<number | null>(null);
     const lastVisibleFile = useRef<string | null>(null);
     const itemsRef = useRef(items);
@@ -258,10 +245,8 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [patch, scopeKey]);
 
-    // Selecting lines only *arms* a range — it does NOT open the composer.
-    // Opening it here would mount an annotation mid-gesture and prevent the
-    // user from extending the selection. The floating "Add comment" button
-    // below opens the composer for the whole range.
+    // Selecting lines only *arms* a range — opening the composer here
+    // would mount an annotation mid-gesture and break extension.
     const handleSelectedLinesChange = (
       sel: CodeViewLineSelection | null,
     ) => {
@@ -516,9 +501,8 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
               diffStyle,
               themeType: theme,
               onLineClick: (props, ctx) => {
-                // Only intercept body clicks while comment mode is on. The
-                // gutter has its own selection mechanism (enableLineSelection)
-                // so we leave numberColumn clicks alone.
+                // Body clicks only; the gutter has its own selection
+                // mechanism (enableLineSelection).
                 if (!commentMode) return;
                 if (props.numberColumn) return;
                 if (!ctx || ctx.type !== "diff") return;
@@ -558,11 +542,10 @@ export const CodeViewPanel = forwardRef<CodeViewPanelHandle, Props>(
                 setRevealedId(null);
                 // Don't preventDefault — keep native text selection working.
               },
-              // Gate Pierre's gutter line-selection on comment mode; off,
-              // native text selection/copy works normally.
+              // Gate gutter line-selection on comment mode; off, native
+              // text-select / copy works normally.
               enableLineSelection: commentMode,
-              // "scroll" keeps every row a uniform height so the virtualizer
-              // knows exact offsets and skips post-render height reconciliation.
+              // "scroll" keeps row heights uniform for the virtualizer.
               overflow: "scroll",
               stickyHeaders: true,
               unsafeCSS,

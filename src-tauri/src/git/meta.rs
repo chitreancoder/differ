@@ -11,10 +11,8 @@ fn open(path: &str) -> Result<Repository, String> {
     Repository::open(path).map_err(|e| format!("not a git repository: {}", e.message()))
 }
 
-/// Probe a directory for write access by creating a short-lived sentinel file
-/// and immediately removing it. Cheaper than parsing permissions and works
-/// correctly on every OS we ship to (Unix permission bits + ACLs, Windows ACLs
-/// + read-only attribute, sandboxed temp locations).
+/// Probe write access by creating + removing a sentinel file. Works on every
+/// OS we ship to (Unix bits, Windows ACLs, sandboxed temp locations).
 fn check_writable(dir: &Path) -> Result<(), String> {
     let probe = dir.join(".differ-write-probe");
     match std::fs::File::create(&probe) {
@@ -110,11 +108,9 @@ pub async fn clone_repo(
         .spawn()
         .map_err(|e| format!("spawn git: {}", e))?;
 
-    // git emits human-readable progress to stderr — `Receiving objects: 47% …`
-    // with `\r`-separated chunks between newline-terminated lines. We read in
-    // small chunks, tokenize on either separator, and forward each non-empty
-    // segment to the frontend as a `clone-progress` event. The full stderr is
-    // also accumulated so we can surface a useful error on failure.
+    // git emits progress on stderr with `\r`-separated chunks between
+    // newline-terminated lines. Tokenize on either separator and forward each
+    // non-empty segment; the full stderr is accumulated for the error path.
     let mut stderr = child.stderr.take().ok_or("git stderr unavailable")?;
     let mut accumulator: Vec<u8> = Vec::with_capacity(1024);
     let mut full_stderr = String::new();
@@ -133,7 +129,6 @@ pub async fn clone_repo(
             .position(|&b| b == b'\r' || b == b'\n')
         {
             let line: Vec<u8> = accumulator.drain(..=pos).collect();
-            // Drop the trailing separator before stringifying.
             let s = std::str::from_utf8(&line[..line.len() - 1])
                 .unwrap_or("")
                 .trim();
@@ -144,7 +139,7 @@ pub async fn clone_repo(
             }
         }
     }
-    // Drain any trailing text without a terminator.
+    // Trailing text without a terminator.
     if !accumulator.is_empty() {
         if let Ok(s) = std::str::from_utf8(&accumulator) {
             let trimmed = s.trim();
@@ -176,20 +171,15 @@ pub async fn init_repo(path: String) -> Result<(), String> {
     if !target.is_dir() {
         return Err(format!("{} is not a directory", path));
     }
-    // Surface permission issues up-front with a clear message instead of
-    // letting git2 fail mid-init with something cryptic.
+    // Surface permission errors up-front, before git2 fails cryptically.
     check_writable(&target)?;
-    // Reuse git2 for the actual init — same dependency we already lean on
-    // everywhere else, so no extra process spawn and no subtle CRLF surprises.
     Repository::init(&target).map_err(|e| format!("git init: {}", e.message()))?;
     Ok(())
 }
 
-/// `compare` may be a UI sentinel meaning "working tree" — never a real ref.
+/// UI sentinel meaning "working tree" — never a real ref.
 const WORKING_TREE_REF: &str = ":working-tree";
 
-/// Check whether a ref name still resolves in the repo. The working-tree
-/// sentinel always resolves (the working tree exists by definition).
 fn ref_resolves(repo: &Repository, name: &str) -> bool {
     if name == WORKING_TREE_REF {
         return true;
@@ -197,10 +187,8 @@ fn ref_resolves(repo: &Repository, name: &str) -> bool {
     repo.revparse_single(name).is_ok()
 }
 
-/// Per-repo refs validation in a single round-trip. Caller passes optional
-/// (base, compare, commit); we return whether each *that was provided* still
-/// resolves. Used at hydration to detect stale persisted selections (e.g. the
-/// user deleted the feature branch between sessions).
+/// Per-repo refs validation in one round-trip. Returns whether each provided
+/// ref still resolves. Used at hydration to detect stale persisted selections.
 #[tauri::command]
 pub fn validate_refs(
     path: String,

@@ -1,8 +1,5 @@
-/**
- * `useShortcuts` — global keyboard hook mounted once from App.tsx. Owns the
- * full hotkey table; see SHORTCUT entries below for the canonical list. New
- * shortcuts should also land in ShortcutsModal.tsx for discoverability.
- */
+/** `useShortcuts` — global keyboard hook mounted from App.tsx. New shortcuts
+ *  should also land in ShortcutsModal.tsx for discoverability. */
 import { useEffect, useRef } from "react";
 import { useStore } from "@/state/store";
 import { buildScope } from "@/state/selection";

@@ -1,19 +1,7 @@
-/**
- * Pure derivation + signature helpers for review comments as the CodeView
- * sees them. Lives outside the component so it stays trivially testable and
- * the orchestrator file (CodeViewPanel.tsx) only has to think about
- * interactions, not annotation bookkeeping.
- *
- * What lives here:
- *  - side-mapping between our model and Pierre's `SelectionSide`
- *  - snippet derivation from (file, side, range) → captured text
- *  - "is this comment still anchored?" check
- *  - content-hash version generators that drive Pierre's per-item
- *    re-render gate
- *  - `useCodeViewComments` hook that derives the `items` Pierre needs,
- *    the detached list, the file-level-note buckets, and the detached-id
- *    set, all from (comments, fileDiffs, draft, ...) inputs
- */
+/** Pure derivation + signature helpers for review comments inside the
+ *  CodeView. Side-mapping, snippet derivation, anchor check, Pierre's
+ *  per-item version hashes, and the useCodeViewComments hook that produces
+ *  `items` / `detached` / `fileNotesByFile` for the orchestrator. */
 import { useMemo } from "react";
 import type {
   CodeViewDiffItem,
@@ -23,7 +11,6 @@ import type {
 } from "@pierre/diffs";
 import type { ReviewComment } from "@/types";
 
-/** A pending comment draft — either anchored to a line range or to a whole file. */
 export type Draft =
   | {
       kind: "line";
@@ -35,7 +22,6 @@ export type Draft =
     }
   | { kind: "file"; file: string };
 
-/** Our `"old" | "new"` model side maps onto the library's annotation sides. */
 export function toLibSide(side: "old" | "new"): SelectionSide {
   return side === "old" ? "deletions" : "additions";
 }
@@ -43,13 +29,8 @@ export function fromLibSide(side: SelectionSide | undefined): "old" | "new" {
   return side === "deletions" ? "old" : "new";
 }
 
-/**
- * Map a (side, line range) onto the captured diff text by walking the parsed
- * hunks. Within a hunk, file line numbers run contiguously from
- * `additionStart`/`deletionStart` and index contiguously from
- * `additionLineIndex`/`deletionLineIndex` into the flat line arrays. Returns
- * "" if no overlap is found (e.g. the range no longer exists after a refresh).
- */
+/** Map a (side, line range) onto captured diff text by walking the hunks.
+ *  Returns "" if no overlap (e.g. range gone after refresh). */
 export function deriveSnippet(
   fileDiff: FileDiffMetadata,
   side: "old" | "new",
@@ -74,8 +55,8 @@ export function deriveSnippet(
   return out.join("\n");
 }
 
-/** File-level notes are anchored as long as the file is present; line notes
- *  are anchored as long as their line range maps into the current diff. */
+/** File notes are anchored while the file is present; line notes need the
+ *  range to map into the current diff. */
 export function commentAnchored(
   fileDiff: FileDiffMetadata | undefined,
   c: ReviewComment,
@@ -87,14 +68,10 @@ export function commentAnchored(
   );
 }
 
-/**
- * A content signature for a file's line annotations. CodeView skips
- * re-rendering an item when its `version` is unchanged (CodeView.js:
- * `item.version === nextItem.version`), so a plain count breaks: a draft
- * composer (1 annotation) turning into a saved comment (1 annotation)
- * keeps the count at 1 and the stale composer stays. Hashing id / body /
- * sent / line makes the version change whenever the rendered content does.
- */
+/** Content signature for a file's annotations. Pierre's `item.version ===
+ *  nextItem.version` check skips re-render — a plain count breaks when a
+ *  draft (1 ann) turns into a saved comment (still 1 ann). Hashing
+ *  id/body/sent/line catches the swap. */
 function annotationsVersion(
   anns: DiffLineAnnotation<ReviewComment>[] | undefined,
   revealedId: string | null,
@@ -112,7 +89,6 @@ function annotationsVersion(
   return h;
 }
 
-/** Bumps when anything that affects a file's header slot changes. */
 function fileHeaderVersion(
   fileNotes: ReviewComment[],
   commentMode: boolean,
@@ -129,21 +105,12 @@ function fileHeaderVersion(
 }
 
 export type DerivedComments = {
-  /** Comments whose anchor is gone — file deleted or line range no longer maps. */
   detached: ReviewComment[];
   detachedIds: Set<string>;
-  /** File-level notes (no range), bucketed by file path. */
   fileNotesByFile: Map<string, ReviewComment[]>;
-  /** The full Pierre item list, sorted to match `fileOrder`, each with a
-   *  content-hashed `version` that drives the per-item re-render gate. */
   items: CodeViewDiffItem<ReviewComment>[];
 };
 
-/**
- * Single hook that produces everything CodeViewPanel needs to feed Pierre:
- * detached comments, file-level note buckets, and the item array with
- * line annotations baked in (including the transient draft composer if any).
- */
 export function useCodeViewComments(
   comments: ReviewComment[],
   fileDiffs: Map<string, FileDiffMetadata>,
@@ -173,9 +140,8 @@ export function useCodeViewComments(
   }, [comments, detachedIds]);
 
   const items = useMemo<CodeViewDiffItem<ReviewComment>[]>(() => {
-    // Group line-anchored comments + the live line draft into per-file
-    // annotations. File-level notes / drafts are rendered in the file's
-    // header metadata slot, not as Pierre annotations.
+    // Group line-anchored comments + the live line draft per file. File-
+    // level drafts/notes go in the header slot, not as Pierre annotations.
     const annByFile = new Map<string, DiffLineAnnotation<ReviewComment>[]>();
     const push = (file: string, ann: DiffLineAnnotation<ReviewComment>) => {
       const bucket = annByFile.get(file);
@@ -193,7 +159,7 @@ export function useCodeViewComments(
       });
     }
     if (draft && draft.kind === "line") {
-      // A transient composer annotation carries an empty-id ReviewComment.
+      // The transient composer carries an empty-id ReviewComment.
       push(draft.file, {
         side: toLibSide(draft.side),
         lineNumber: draft.end,
@@ -214,8 +180,7 @@ export function useCodeViewComments(
       const fileNotes = fileNotesByFile.get(fileDiff.name) ?? [];
       const fileDraftActive =
         draft?.kind === "file" && draft.file === fileDiff.name;
-      // Combined version: line annotations + file-header slot. Either kind
-      // of content change has to bump this so Pierre re-renders the item.
+      // Combined version drives Pierre's per-item re-render gate.
       const aV = annotationsVersion(annotations, revealedId);
       const fV = fileHeaderVersion(fileNotes, commentMode, fileDraftActive);
       return {
@@ -227,9 +192,8 @@ export function useCodeViewComments(
       };
     });
 
-    // Reorder to match the file tree (folders-first, alphabetical). Patch
-    // order from git doesn't match the tree's sort. Stable sort keeps
-    // unranked files at the end in their relative order.
+    // Reorder to match the tree (folders-first, alphabetical). Git's patch
+    // order doesn't match that sort.
     const rank = new Map(fileOrder.map((p, i) => [p, i]));
     return all.sort(
       (a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity),

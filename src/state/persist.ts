@@ -1,9 +1,5 @@
-/**
- * Hydration + serialization for the durable subset of the Zustand store
- * (repos, branch selections, view prefs, comments). Backed by
- * tauri-plugin-store. Transient fields (`reviewed`, modals, search query) are
- * intentionally not persisted — see `Persisted` below for the full set.
- */
+/** Hydration + serialization for the durable subset of the Zustand store.
+ *  Transient fields (`reviewed`, modals, search query) are not persisted. */
 import { Store } from "@tauri-apps/plugin-store";
 import { invoke } from "@tauri-apps/api/core";
 import type { DiffStyle, Repo, ReviewComment, ThemePreference } from "@/types";
@@ -64,10 +60,9 @@ export async function loadPersisted(): Promise<void> {
     }),
   );
 
-  // For every repo that opened cleanly, cross-check its persisted base /
-  // compare against the live ref set. A branch deleted or force-renamed
-  // between sessions otherwise resurrects as a confusing "Diff failed: ref
-  // not found" toast deep into the workflow.
+  // Cross-check each opened repo's persisted base/compare against the live
+  // ref set — a branch deleted between sessions otherwise surfaces as a
+  // confusing "Diff failed" toast much later.
   const staleByRepo = new Map<string, string[]>();
   await Promise.all(
     repos
@@ -98,8 +93,7 @@ export async function loadPersisted(): Promise<void> {
           }
           if (stale.length) staleByRepo.set(r.name, stale);
         } catch {
-          /* validation itself failed — leave the persisted refs alone and
-             let the downstream diff path produce its own error toast. */
+          /* let the downstream diff path produce its own error. */
         }
       }),
   );
@@ -120,8 +114,6 @@ export async function loadPersisted(): Promise<void> {
     ignoreWhitespace,
   });
 
-  // Surface the cleared selections — quoting the branch names so the user can
-  // immediately see what they need to re-pick.
   for (const [repoName, stale] of staleByRepo) {
     const list = stale.map((n) => `'${n}'`).join(", ");
     const noun = stale.length === 1 ? "Branch" : "Branches";

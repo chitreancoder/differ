@@ -1,8 +1,5 @@
-/**
- * `useDiffFiles` — the file-list hook for the active comparison. Owns its own
- * module-level cache keyed on (repo, base, compare, selectedCommit, ws). Also
- * exports `visibleFilePaths()` which walks the tree honoring collapse state.
- */
+/** `useDiffFiles` — file list for the active comparison. Also exports
+ *  `visibleFilePaths` (tree walk honoring collapse state). */
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { FileEntry } from "@/types";
@@ -38,9 +35,7 @@ export function useDiffFiles(
   const [error, setError] = useState<string | null>(null);
 
   const refreshCounter = useStore((s) => s.refreshCounter);
-  // Debounce so a rapid double-toggle (or holding `w` down) doesn't fire
-  // back-to-back git invocations that would just settle on the original value
-  // anyway. 150ms is well under the "did the toggle do something?" threshold.
+  // 150ms debounce coalesces rapid `w` taps into a single refetch.
   const ignoreWhitespace = useDebouncedValue(
     useStore((s) => s.ignoreWhitespace),
     150,
@@ -77,8 +72,7 @@ export function useDiffFiles(
       .then((list) => {
         if (cancelled) return;
         setFiles(list);
-        // When we just resolved a single-commit diff, prime the shared cache
-        // so the CommitTimeline tooltip doesn't re-fetch the same data.
+        // Prime the shared cache so the hover tooltip doesn't re-fetch.
         if (selectedCommit) {
           rememberCommitFiles(repoPath, selectedCommit, ignoreWhitespace, list);
         }

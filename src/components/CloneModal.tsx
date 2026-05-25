@@ -6,13 +6,9 @@ import { addRepoByPath } from "@/state/repoActions";
 import { useStore } from "@/state/store";
 import { useAutoFocus } from "@/hooks";
 
-/**
- * URL-paste → pick destination → git clone → add the result. The UI is
- * deliberately dumb (input + dest picker + status line); the heavy lifting
- * lives in the `clone_repo` Tauri command, which shells out to `git clone
- * --progress` and emits `clone-progress` events that we surface in the
- * status box.
- */
+/** URL-paste → pick destination → git clone → add the result. The Rust
+ *  `clone_repo` command shells out to `git clone --progress` and emits
+ *  `clone-progress` events that we surface in the status box. */
 export function CloneModal({ onClose }: { onClose: () => void }) {
   const [url, setUrl] = useState("");
   const [dest, setDest] = useState<string | null>(null);
@@ -24,8 +20,8 @@ export function CloneModal({ onClose }: { onClose: () => void }) {
 
   useAutoFocus(inputRef);
 
-  // Mount the `clone-progress` listener for the modal's lifetime so we
-  // don't miss the early "Cloning into …" chatter while it's wiring up.
+  // Mount the listener for the modal's lifetime so we don't miss the
+  // early "Cloning into …" chatter.
   useEffect(() => {
     let unlisten: UnlistenFn | null = null;
     let cancelled = false;

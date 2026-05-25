@@ -1,8 +1,6 @@
-/**
- * `useFullDiff` — fetches the unified patch text for the active comparison.
- * Separate from `useDiffFiles` because the patch is far bigger and used only
- * by the diff viewer, while the file list also feeds the tree.
- */
+/** `useFullDiff` — unified patch text for the active comparison. Split
+ *  from `useDiffFiles` because the patch is far bigger and only the diff
+ *  viewer needs it. */
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { isWorkingTree } from "@/types";
@@ -56,8 +54,7 @@ export function useFullDiff(
   selectedCommit: string | null,
 ): { patch: string | null; loading: boolean; error: string | null } {
   const refreshCounter = useStore((s) => s.refreshCounter);
-  // Debounce so rapid toggles (e.g. holding `w`) coalesce into one refetch.
-  // See state/diff.ts for the same rationale.
+  // 150ms debounce — see state/diff.ts.
   const ignoreWhitespace = useDebouncedValue(
     useStore((s) => s.ignoreWhitespace),
     150,

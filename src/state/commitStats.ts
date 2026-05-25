@@ -1,21 +1,6 @@
-/**
- * Shared cache for per-commit name-status results, plus their derived
- * summary stats (file count, +/-, top three files). Two unrelated consumers
- * hit the same backend command:
- *
- *   1. `useDiffFiles` (state/diff.ts) when `selectedCommit` is set —
- *      it needs the raw FileEntry list to populate the tree.
- *   2. The hover tooltip in CommitTimeline — it needs the derived stats
- *      to render the popover body.
- *
- * Before this module those were two independent fetches per commit (with
- * separate caches). Now `useDiffFiles` populates the cache as a side
- * effect; the tooltip reads from it for free.
- *
- * SHAs are immutable, so a (repo, sha, whitespace-mode) tuple is safe to
- * memoize for the life of the session. Cache is cleared from
- * state/refresh.ts when the user explicitly refreshes.
- */
+/** Shared cache for per-commit name-status results + their derived stats.
+ *  `useDiffFiles` populates it after a single-commit fetch so the
+ *  CommitTimeline hover tooltip resolves from cache for free. */
 import { invoke } from "@tauri-apps/api/core";
 import type { FileEntry } from "@/types";
 
@@ -60,7 +45,6 @@ function deriveStats(files: FileEntry[]): CommitStats {
   return { fileCount: files.length, additions, deletions, topFiles };
 }
 
-/** Read the cached stats for a commit. Returns null on miss. */
 export function peekCommitStats(
   repoPath: string,
   sha: string,
@@ -69,11 +53,7 @@ export function peekCommitStats(
   return cache.get(key(repoPath, sha, ignoreWhitespace))?.stats ?? null;
 }
 
-/**
- * Store a (files, derived stats) result in the cache. Called by
- * `useDiffFiles` after a successful `diff_commit_name_status` fetch so the
- * tooltip can read its derived view without re-fetching.
- */
+/** Side-channel writer used by useDiffFiles after a single-commit fetch. */
 export function rememberCommitFiles(
   repoPath: string,
   sha: string,
@@ -86,11 +66,6 @@ export function rememberCommitFiles(
   });
 }
 
-/**
- * Fetch (or read from cache) the stats for a single commit. Used by the
- * hover tooltip — `useDiffFiles` populates the same cache so on a cache
- * hit this resolves synchronously.
- */
 export async function fetchCommitStats(
   repoPath: string,
   sha: string,
@@ -107,7 +82,6 @@ export async function fetchCommitStats(
   return deriveStats(files);
 }
 
-/** Drop everything — called from state/refresh.ts on user-initiated refresh. */
 export function clearCommitStatsCache(): void {
   cache.clear();
 }

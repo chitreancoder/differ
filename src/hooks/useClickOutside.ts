@@ -1,10 +1,6 @@
 import { useEffect, type RefObject } from "react";
 
-/**
- * Fires `onOutside` when a `mousedown` lands outside `ref.current`. Disabled
- * via `enabled=false` so callers can gate it on their own `open` state
- * without conditionally calling the hook.
- */
+/** Fires `onOutside` on a mousedown outside `ref.current`. */
 export function useClickOutside(
   ref: RefObject<HTMLElement | null>,
   onOutside: () => void,

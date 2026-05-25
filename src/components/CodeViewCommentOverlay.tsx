@@ -2,24 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import type { ReviewComment } from "@/types";
 import { relativeTimeFromMs } from "@/utils/time";
 
-/**
- * UI sub-components for review comments rendered inside Pierre's CodeView.
- * Visual chrome only — every behavior is parented from CodeViewPanel via
- * callback props so this file stays free of store/Pierre coupling.
- *
- * Exports:
- *   - <Composer>        — line draft composer (lives in Pierre's annotation slot)
- *   - <SavedComment>    — line-anchored saved note (also in annotation slot)
- *   - <DetachedComments>— rolled-up list of comments whose anchor is gone
- *   - <FileHeaderSlot>  — per-file header widget for file-level notes
- *   - <FileLevelComposer>, <FileLevelNote> — file-level analogs of above
- */
+/** Visual chrome for review comments inside Pierre's CodeView. All
+ *  behavior is driven via callback props — no store/Pierre coupling. */
 
-/**
- * Compact chip naming where a comment is attached. For line notes, clicking
- * highlights those lines (Pierre's syntax-aware selection). For file-level
- * notes, clicking scrolls to the top of the file.
- */
+/** "Line 42" / "File note" chip naming where a comment is attached. */
 function CommentContext({
   range,
   onReveal,
@@ -239,11 +225,7 @@ export function DetachedComments({
   );
 }
 
-/**
- * Per-file widget injected into Pierre's file header via `renderHeaderMetadata`.
- * Shows existing file-level notes inline, an "+ Add file note" button when
- * in comment mode, and the composer when a file-level draft is active.
- */
+/** Per-file header widget injected via Pierre's `renderHeaderMetadata`. */
 export function FileHeaderSlot({
   notes,
   commentMode,

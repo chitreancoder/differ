@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 
-/**
- * Returns a debounced echo of `value` that only updates after `delayMs` has
- * elapsed without changes. Useful for piping a fast-changing input
- * (search-box value, slider) into an expensive consumer (text search,
- * remote query).
- */
+/** Returns `value` once `delayMs` has elapsed without further changes. */
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {

@@ -1,8 +1,5 @@
-/**
- * Pure utilities for review comments: snippet truncation and the
- * Claude-Code export formatter. No store wiring — kept side-effect-free so
- * tests can exercise it without mocking Zustand.
- */
+/** Snippet truncation + Claude-Code export formatter. No store wiring so
+ *  tests can exercise it without mocks. */
 import { invoke } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import type { ReviewComment } from "@/types";
