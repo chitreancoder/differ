@@ -1,12 +1,29 @@
 use std::path::{Path, PathBuf};
 
 use git2::{BranchType, Repository, Sort};
+use tauri::Emitter;
+use tokio::io::AsyncReadExt;
 use tokio::process::Command;
 
 use super::types::{BranchInfo, CommitInfo, RepoInfo};
 
 fn open(path: &str) -> Result<Repository, String> {
     Repository::open(path).map_err(|e| format!("not a git repository: {}", e.message()))
+}
+
+/// Probe a directory for write access by creating a short-lived sentinel file
+/// and immediately removing it. Cheaper than parsing permissions and works
+/// correctly on every OS we ship to (Unix permission bits + ACLs, Windows ACLs
+/// + read-only attribute, sandboxed temp locations).
+fn check_writable(dir: &Path) -> Result<(), String> {
+    let probe = dir.join(".differ-write-probe");
+    match std::fs::File::create(&probe) {
+        Ok(_) => {
+            let _ = std::fs::remove_file(&probe);
+            Ok(())
+        }
+        Err(e) => Err(format!("can't write to {}: {}", dir.display(), e)),
+    }
 }
 
 #[tauri::command]
@@ -68,28 +85,83 @@ fn repo_name_from_url(url: &str) -> Option<String> {
 }
 
 #[tauri::command]
-pub async fn clone_repo(url: String, parent_dir: String) -> Result<String, String> {
+pub async fn clone_repo(
+    app: tauri::AppHandle,
+    url: String,
+    parent_dir: String,
+) -> Result<String, String> {
     let name = repo_name_from_url(&url)
         .ok_or_else(|| "couldn't infer a directory name from URL".to_string())?;
     let parent = PathBuf::from(&parent_dir);
     if !parent.is_dir() {
         return Err(format!("{} is not a directory", parent_dir));
     }
+    check_writable(&parent)?;
     let target = parent.join(&name);
     if target.exists() {
         return Err(format!("{} already exists", target.display()));
     }
 
-    let output = Command::new("git")
+    let mut child = Command::new("git")
         .current_dir(&parent)
         .args(["clone", "--progress", &url, &name])
-        .output()
-        .await
+        .stderr(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
         .map_err(|e| format!("spawn git: {}", e))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("git clone failed: {}", stderr.trim()));
+    // git emits human-readable progress to stderr — `Receiving objects: 47% …`
+    // with `\r`-separated chunks between newline-terminated lines. We read in
+    // small chunks, tokenize on either separator, and forward each non-empty
+    // segment to the frontend as a `clone-progress` event. The full stderr is
+    // also accumulated so we can surface a useful error on failure.
+    let mut stderr = child.stderr.take().ok_or("git stderr unavailable")?;
+    let mut accumulator: Vec<u8> = Vec::with_capacity(1024);
+    let mut full_stderr = String::new();
+    let mut buf = [0u8; 512];
+    loop {
+        let n = stderr
+            .read(&mut buf)
+            .await
+            .map_err(|e| format!("read git stderr: {}", e))?;
+        if n == 0 {
+            break;
+        }
+        accumulator.extend_from_slice(&buf[..n]);
+        while let Some(pos) = accumulator
+            .iter()
+            .position(|&b| b == b'\r' || b == b'\n')
+        {
+            let line: Vec<u8> = accumulator.drain(..=pos).collect();
+            // Drop the trailing separator before stringifying.
+            let s = std::str::from_utf8(&line[..line.len() - 1])
+                .unwrap_or("")
+                .trim();
+            if !s.is_empty() {
+                full_stderr.push_str(s);
+                full_stderr.push('\n');
+                let _ = app.emit("clone-progress", s);
+            }
+        }
+    }
+    // Drain any trailing text without a terminator.
+    if !accumulator.is_empty() {
+        if let Ok(s) = std::str::from_utf8(&accumulator) {
+            let trimmed = s.trim();
+            if !trimmed.is_empty() {
+                full_stderr.push_str(trimmed);
+                full_stderr.push('\n');
+                let _ = app.emit("clone-progress", trimmed);
+            }
+        }
+    }
+
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("wait git: {}", e))?;
+    if !status.success() {
+        return Err(format!("git clone failed: {}", full_stderr.trim()));
     }
 
     let canonical = std::fs::canonicalize(&target)
@@ -104,6 +176,9 @@ pub async fn init_repo(path: String) -> Result<(), String> {
     if !target.is_dir() {
         return Err(format!("{} is not a directory", path));
     }
+    // Surface permission issues up-front with a clear message instead of
+    // letting git2 fail mid-init with something cryptic.
+    check_writable(&target)?;
     // Reuse git2 for the actual init — same dependency we already lean on
     // everywhere else, so no extra process spawn and no subtle CRLF surprises.
     Repository::init(&target).map_err(|e| format!("git init: {}", e.message()))?;

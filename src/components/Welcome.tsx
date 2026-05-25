@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { pickAndAddRepo, addRepoByPath } from "../state/repoActions";
 import { useStore } from "../state/store";
 import iconUrl from "../assets/icon.png";
@@ -89,12 +90,33 @@ function CloneModal({ onClose }: { onClose: () => void }) {
   const [url, setUrl] = useState("");
   const [dest, setDest] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pushToast = useStore((s) => s.pushToast);
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+
+  // Stream git's progress output (emitted from the Rust clone_repo command as
+  // `clone-progress` events) into a single live status line. Mounted once for
+  // the lifetime of the modal so we don't miss the early "Cloning into …"
+  // chatter while the listener is still wiring up.
+  useEffect(() => {
+    let unlisten: UnlistenFn | null = null;
+    let cancelled = false;
+    (async () => {
+      const fn = await listen<string>("clone-progress", (event) => {
+        setProgress(event.payload);
+      });
+      if (cancelled) fn();
+      else unlisten = fn;
+    })();
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
   }, []);
 
   // Best-effort default directory name parsed out of the URL ("foo.git" or
@@ -116,6 +138,7 @@ function CloneModal({ onClose }: { onClose: () => void }) {
     if (!trimmedUrl || !dest) return;
     setBusy(true);
     setError(null);
+    setProgress(null);
     try {
       const cloned = await invoke<string>("clone_repo", {
         url: trimmedUrl,
@@ -128,6 +151,7 @@ function CloneModal({ onClose }: { onClose: () => void }) {
       setError(String(e));
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -181,6 +205,11 @@ function CloneModal({ onClose }: { onClose: () => void }) {
             </span>
           </div>
         </label>
+        {busy && progress && (
+          <div className="welcome-modal-progress" aria-live="polite">
+            {progress}
+          </div>
+        )}
         {error && <div className="welcome-modal-error">{error}</div>}
         <div className="welcome-modal-actions">
           <button
