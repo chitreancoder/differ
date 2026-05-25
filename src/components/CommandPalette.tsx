@@ -21,6 +21,7 @@ export function CommandPalette() {
   const toggleSidebar = useStore((s) => s.toggleSidebar);
   const toggleDiffStyle = useStore((s) => s.toggleDiffStyle);
   const toggleCommentMode = useStore((s) => s.toggleCommentMode);
+  const setThemePreference = useStore((s) => s.setThemePreference);
   const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -172,6 +173,33 @@ export function CommandPalette() {
               >
                 Toggle comment mode{" "}
                 <span className="palette-shortcut">c</span>
+              </Command.Item>
+              <Command.Item
+                value="theme system follow auto"
+                onSelect={() => {
+                  setThemePreference("system");
+                  close();
+                }}
+              >
+                Theme: Follow system
+              </Command.Item>
+              <Command.Item
+                value="theme light"
+                onSelect={() => {
+                  setThemePreference("light");
+                  close();
+                }}
+              >
+                Theme: Light
+              </Command.Item>
+              <Command.Item
+                value="theme dark"
+                onSelect={() => {
+                  setThemePreference("dark");
+                  close();
+                }}
+              >
+                Theme: Dark
               </Command.Item>
               {activeRepoPath && (
                 <Command.Item

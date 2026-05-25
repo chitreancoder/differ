@@ -1,7 +1,13 @@
 import { useStore } from "../state/store";
 import { fetchRemote } from "../state/refresh";
-import { isWorkingTree } from "../types";
+import { isWorkingTree, type ThemePreference } from "../types";
 import { CommitTimeline } from "./CommitTimeline";
+
+const THEME_CHOICES: { value: ThemePreference; label: string; title: string }[] = [
+  { value: "system", label: "Auto", title: "Follow system theme" },
+  { value: "light", label: "Light", title: "Light theme" },
+  { value: "dark", label: "Dark", title: "Dark theme" },
+];
 
 export function TopBar() {
   const activeRepoPath = useStore((s) => s.activeRepoPath);
@@ -17,6 +23,8 @@ export function TopBar() {
   const setDiffStyle = useStore((s) => s.setDiffStyle);
   const commentMode = useStore((s) => s.commentMode);
   const toggleCommentMode = useStore((s) => s.toggleCommentMode);
+  const themePreference = useStore((s) => s.themePreference);
+  const setThemePreference = useStore((s) => s.setThemePreference);
   const setBranchPickerKind = useStore((s) => s.setBranchPickerKind);
   const fetching = useStore((s) =>
     activeRepoPath ? !!s.fetchingRepos[activeRepoPath] : false,
@@ -130,6 +138,23 @@ export function TopBar() {
         >
           ☰
         </button>
+      </div>
+
+      <div className="topbar-tools topbar-theme" role="radiogroup" aria-label="Theme">
+        {THEME_CHOICES.map((choice) => (
+          <button
+            key={choice.value}
+            className={`btn-theme ${
+              themePreference === choice.value ? "active" : ""
+            }`}
+            onClick={() => setThemePreference(choice.value)}
+            title={choice.title}
+            role="radio"
+            aria-checked={themePreference === choice.value}
+          >
+            {choice.label}
+          </button>
+        ))}
       </div>
     </header>
   );

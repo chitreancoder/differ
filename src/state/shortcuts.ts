@@ -55,6 +55,12 @@ export function useShortcuts() {
         return;
       }
 
+      if (meta && e.shiftKey && lower === "t") {
+        e.preventDefault();
+        store.cycleThemePreference();
+        return;
+      }
+
       if (meta && /^[1-9]$/.test(e.key)) {
         const idx = parseInt(e.key, 10) - 1;
         const repo = store.repos[idx];

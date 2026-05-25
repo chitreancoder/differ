@@ -49,6 +49,8 @@ export type FileEntry = {
 
 export type DiffStyle = "split" | "unified";
 
+export type ThemePreference = "system" | "light" | "dark";
+
 export type ReviewComment = {
   id: string; // crypto.randomUUID()
   file: string; // == CodeView item id / file path

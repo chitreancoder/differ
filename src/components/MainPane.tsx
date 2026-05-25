@@ -3,7 +3,7 @@ import { useStore } from "../state/store";
 import { useDiffFiles, visibleFilePaths } from "../state/diff";
 import { useFullDiff } from "../state/fullDiff";
 import { fetchRemote, refreshAll } from "../state/refresh";
-import { useSystemTheme } from "../theme";
+import { useEffectiveTheme } from "../theme";
 import { FileTree } from "./FileTree";
 import { CodeViewPane, type CodeViewPaneHandle } from "./CodeViewPane";
 
@@ -35,7 +35,7 @@ export function MainPane() {
   const removeComment = useStore((s) => s.removeComment);
   const treeWidth = useStore((s) => s.treeWidth);
   const setTreeWidth = useStore((s) => s.setTreeWidth);
-  const theme = useSystemTheme();
+  const theme = useEffectiveTheme();
   const codeViewRef = useRef<CodeViewPaneHandle>(null);
   const mainRef = useRef<HTMLElement>(null);
 

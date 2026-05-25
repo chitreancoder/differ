@@ -1,5 +1,12 @@
 import { create } from "zustand";
-import type { DiffStyle, FileEntry, Repo, ReviewComment, Toast } from "../types";
+import type {
+  DiffStyle,
+  FileEntry,
+  Repo,
+  ReviewComment,
+  ThemePreference,
+  Toast,
+} from "../types";
 
 type State = {
   repos: Repo[];
@@ -23,6 +30,7 @@ type State = {
   toasts: Toast[];
   commentMode: boolean;
   comments: Record<string, ReviewComment[]>;
+  themePreference: ThemePreference;
   hydrated: boolean;
 };
 
@@ -65,6 +73,8 @@ type Actions = {
   ) => void;
   removeComment: (scope: string, id: string) => void;
   markCommentsSent: (scope: string, ids: string[]) => void;
+  setThemePreference: (p: ThemePreference) => void;
+  cycleThemePreference: () => void;
 };
 
 let toastSeq = 0;
@@ -91,6 +101,7 @@ export const useStore = create<State & Actions>((set) => ({
   toasts: [],
   commentMode: false,
   comments: {},
+  themePreference: "system",
   hydrated: false,
 
   hydrate: (data) => set((s) => ({ ...s, ...data, hydrated: true })),
@@ -238,4 +249,14 @@ export const useStore = create<State & Actions>((set) => ({
         },
       };
     }),
+  setThemePreference: (p) => set({ themePreference: p }),
+  cycleThemePreference: () =>
+    set((s) => ({
+      themePreference:
+        s.themePreference === "system"
+          ? "light"
+          : s.themePreference === "light"
+            ? "dark"
+            : "system",
+    })),
 }));

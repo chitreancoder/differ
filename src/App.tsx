@@ -8,7 +8,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { BranchPickerModal } from "./components/BranchPickerModal";
 import { StatusBar } from "./components/StatusBar";
 import { ShortcutsHelp } from "./components/ShortcutsHelp";
-import { useSystemTheme } from "./theme";
+import { useEffectiveTheme } from "./theme";
 import { useShortcuts } from "./state/shortcuts";
 import { loadPersisted, startPersistSubscription } from "./state/persist";
 import { addRepoByPath } from "./state/repoActions";
@@ -65,7 +65,7 @@ function useBranchDefaults() {
 }
 
 function App() {
-  useSystemTheme();
+  useEffectiveTheme();
   useBranchDefaults();
   useAutoFetchOnRepoSwitch();
   useFocusRefresh();

@@ -1,6 +1,6 @@
 import { Store } from "@tauri-apps/plugin-store";
 import { invoke } from "@tauri-apps/api/core";
-import type { DiffStyle, Repo, ReviewComment } from "../types";
+import type { DiffStyle, Repo, ReviewComment, ThemePreference } from "../types";
 import { useStore } from "./store";
 
 const STORE_FILE = "differ.json";
@@ -21,6 +21,7 @@ type Persisted = {
   compare: Record<string, string>;
   commentMode: boolean;
   comments: Record<string, ReviewComment[]>;
+  themePreference: ThemePreference;
 };
 
 export async function loadPersisted(): Promise<void> {
@@ -39,6 +40,8 @@ export async function loadPersisted(): Promise<void> {
   const commentMode = (await store.get<boolean>("commentMode")) ?? false;
   const comments =
     (await store.get<Record<string, ReviewComment[]>>("comments")) ?? {};
+  const themePreference =
+    (await store.get<ThemePreference>("themePreference")) ?? "system";
 
   // Validate each repo silently in parallel; mark missing if open fails.
   await Promise.all(
@@ -64,6 +67,7 @@ export async function loadPersisted(): Promise<void> {
     compare,
     commentMode,
     comments,
+    themePreference,
   });
 }
 
@@ -88,6 +92,7 @@ export function startPersistSubscription(): () => void {
     await store.set("compare", state.compare);
     await store.set("commentMode", state.commentMode);
     await store.set("comments", state.comments);
+    await store.set("themePreference", state.themePreference);
     await store.save();
   };
 
@@ -102,7 +107,8 @@ export function startPersistSubscription(): () => void {
       s.base !== prev.base ||
       s.compare !== prev.compare ||
       s.commentMode !== prev.commentMode ||
-      s.comments !== prev.comments;
+      s.comments !== prev.comments ||
+      s.themePreference !== prev.themePreference;
     if (!relevantChanged) return;
     pendingState = {
       repos: s.repos,
@@ -114,6 +120,7 @@ export function startPersistSubscription(): () => void {
       compare: s.compare,
       commentMode: s.commentMode,
       comments: s.comments,
+      themePreference: s.themePreference,
     };
     if (!saveScheduled) {
       saveScheduled = true;
