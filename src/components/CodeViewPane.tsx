@@ -290,6 +290,11 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
       return map;
     }, [patch, scopeKey]);
 
+    // Stable CSS string — Pierre compares unsafeCSS by identity to decide
+    // whether to re-inject into each file's shadow DOM. Without memo we'd
+    // hand it a fresh string every render and invalidate that check.
+    const unsafeCSS = useMemo(() => shadowCSS(commentMode), [commentMode]);
+
     // Comments no longer anchored: file gone, or (for line notes) range no
     // longer mapping. File-level notes survive any in-file change.
     const detached = useMemo(
@@ -763,7 +768,7 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
               // — smoothest scrolling. Long lines scroll horizontally per file.
               overflow: "scroll",
               stickyHeaders: true,
-              unsafeCSS: shadowCSS(commentMode),
+              unsafeCSS,
               onPostRender: (node, instance) => {
                 stampCommentedDots(
                   node,

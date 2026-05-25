@@ -89,9 +89,11 @@ export function DiffSearch({ fileDiffs, fileOrder, viewRef }: Props) {
   const [index, setIndex] = useState(0);
 
   // Debounce the query so big patches don't re-scan on every keystroke.
+  // 150ms is the sweet spot — still feels responsive, halves the scan count
+  // for typical typing speeds vs the previous 80ms.
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   useEffect(() => {
-    const t = window.setTimeout(() => setDebouncedQuery(query), 80);
+    const t = window.setTimeout(() => setDebouncedQuery(query), 150);
     return () => window.clearTimeout(t);
   }, [query]);
 

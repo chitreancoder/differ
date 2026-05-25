@@ -4,6 +4,7 @@ import { useCommits } from "../state/commits";
 import { useStore } from "../state/store";
 import { isWorkingTree, type Commit, type FileEntry } from "../types";
 import { relativeTimeFromSeconds } from "../utils/time";
+import { nameInitials } from "../utils/avatar";
 
 const TOOLTIP_DELAY_MS = 200;
 const TOOLTIP_WIDTH = 400;
@@ -82,14 +83,6 @@ async function fetchCommitStats(
   };
   statsCache.set(key, stats);
   return stats;
-}
-
-function initials(name: string): string {
-  const cleaned = name.trim();
-  if (!cleaned) return "?";
-  const parts = cleaned.split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function formatNumber(n: number): string {
@@ -339,7 +332,7 @@ function CommitTooltip({
         <span className="commit-tooltip-sha-pill">{commit.shortSha}</span>
         <span className="commit-tooltip-dot">·</span>
         <span className="commit-tooltip-avatar">
-          {initials(commit.authorName)}
+          {nameInitials(commit.authorName)}
         </span>
         <span className="commit-tooltip-author">{commit.authorName}</span>
         <span className="commit-tooltip-spacer" />

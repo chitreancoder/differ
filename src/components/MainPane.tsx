@@ -53,7 +53,9 @@ export function MainPane() {
         window.removeEventListener("mouseup", onUp);
         document.body.classList.remove("resizing-col");
       };
-      window.addEventListener("mousemove", onMove);
+      // Passive mousemove — we never preventDefault, so this lets the
+      // browser coalesce events and skip the cancelability bookkeeping.
+      window.addEventListener("mousemove", onMove, { passive: true });
       window.addEventListener("mouseup", onUp);
       document.body.classList.add("resizing-col");
     },
