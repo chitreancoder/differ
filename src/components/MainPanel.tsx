@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useStore } from "@/state/store";
+import { useRepoSelection } from "@/state/selection";
 import { useDiffFiles, visibleFilePaths } from "@/state/diff";
 import { useFullDiff } from "@/state/fullDiff";
 import { fetchRemote, refreshAll } from "@/state/refresh";
@@ -16,15 +17,8 @@ const NO_COLLAPSE = new Set<string>();
 export function MainPanel() {
   const repos = useStore((s) => s.repos);
   const activeRepoPath = useStore((s) => s.activeRepoPath);
-  const base = useStore((s) =>
-    activeRepoPath ? s.base[activeRepoPath] ?? null : null,
-  );
-  const compare = useStore((s) =>
-    activeRepoPath ? s.compare[activeRepoPath] ?? null : null,
-  );
-  const selectedCommit = useStore((s) =>
-    activeRepoPath ? s.selectedCommit[activeRepoPath] ?? null : null,
-  );
+  const { base, compare, selectedCommit, scope } =
+    useRepoSelection(activeRepoPath);
   const diffStyle = useStore((s) => s.diffStyle);
   const currentFilePath = useStore((s) => s.currentFilePath);
   const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
@@ -63,14 +57,6 @@ export function MainPanel() {
       document.body.classList.add("resizing-col");
     },
     [treeWidth, setTreeWidth],
-  );
-
-  const scope = useMemo(
-    () =>
-      activeRepoPath && base && compare
-        ? `${activeRepoPath}|${base}|${compare}|${selectedCommit ?? ""}`
-        : null,
-    [activeRepoPath, base, compare, selectedCommit],
   );
 
   const { files, loading, error } = useDiffFiles(

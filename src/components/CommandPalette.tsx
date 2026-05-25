@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import { Command } from "cmdk";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useStore } from "@/state/store";
+import { buildScope } from "@/state/selection";
 import { useAutoFocus, useEscapeKey } from "@/hooks";
 import { fetchRemote, refreshAll } from "@/state/refresh";
 import { pickAndAddRepo } from "@/state/repoActions";
@@ -51,8 +52,7 @@ export function CommandPalette() {
     const b = s.base[repoPath];
     const c = s.compare[repoPath];
     if (!b || !c) return null;
-    const commit = s.selectedCommit[repoPath] ?? "";
-    return `${repoPath}|${b}|${c}|${commit}`;
+    return buildScope(repoPath, b, c, s.selectedCommit[repoPath]);
   };
 
   const exportComments = async () => {

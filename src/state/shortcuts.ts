@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef } from "react";
 import { useStore } from "@/state/store";
+import { buildScope } from "@/state/selection";
 import { fetchRemote, refreshAll } from "@/state/refresh";
 import { visibleFilePaths } from "@/state/diff";
 
@@ -94,9 +95,10 @@ export function useShortcuts() {
         const repo = store.activeRepoPath;
         const b = repo ? store.base[repo] : undefined;
         const c = repo ? store.compare[repo] : undefined;
-        const sc = repo ? store.selectedCommit[repo] ?? "" : "";
         const scopeKey =
-          repo && b && c ? `${repo}|${b}|${c}|${sc}` : null;
+          repo && b && c
+            ? buildScope(repo, b, c, store.selectedCommit[repo])
+            : null;
         const bucket = scopeKey ? store.comments[scopeKey] ?? [] : [];
         const commented = new Set(bucket.map((cm) => cm.file));
         navFiles = navFiles.filter((f) => commented.has(f.path));

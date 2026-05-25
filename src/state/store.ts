@@ -157,6 +157,9 @@ export const useStore = create<State & Actions>((set) => ({
   setDiffStyle: (style) => set({ diffStyle: style }),
   toggleDiffStyle: () =>
     set((s) => ({ diffStyle: s.diffStyle === "split" ? "unified" : "split" })),
+  // setBase/setCompare/swapBranches all clear `selectedCommit` for the repo:
+  // a commit selection only makes sense inside one specific comparison frame,
+  // so changing the frame must drop it. Callers don't need to do it manually.
   setBase: (repoPath, branch) =>
     set((s) => ({
       base: { ...s.base, [repoPath]: branch },

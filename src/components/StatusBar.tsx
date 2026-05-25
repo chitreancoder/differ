@@ -1,4 +1,5 @@
 import { useStore } from "@/state/store";
+import { useRepoSelection } from "@/state/selection";
 import { exportForClaude } from "@/state/review";
 import type { ReviewComment } from "@/types";
 
@@ -17,19 +18,7 @@ export function StatusBar() {
   const toggleShortcuts = useStore((s) => s.toggleShortcuts);
   const commentMode = useStore((s) => s.commentMode);
   const activeRepoPath = useStore((s) => s.activeRepoPath);
-  const base = useStore((s) =>
-    activeRepoPath ? s.base[activeRepoPath] ?? null : null,
-  );
-  const compare = useStore((s) =>
-    activeRepoPath ? s.compare[activeRepoPath] ?? null : null,
-  );
-  const selectedCommit = useStore((s) =>
-    activeRepoPath ? s.selectedCommit[activeRepoPath] ?? null : null,
-  );
-  const scope =
-    activeRepoPath && base && compare
-      ? `${activeRepoPath}|${base}|${compare}|${selectedCommit ?? ""}`
-      : null;
+  const { scope } = useRepoSelection(activeRepoPath);
   const scopeComments =
     useStore((s) => (scope ? s.comments[scope] : undefined)) ?? EMPTY_COMMENTS;
 
