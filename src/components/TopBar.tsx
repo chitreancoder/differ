@@ -1,13 +1,8 @@
 import { useStore } from "../state/store";
 import { fetchRemote } from "../state/refresh";
-import { isWorkingTree, type ThemePreference } from "../types";
+import { isWorkingTree } from "../types";
 import { CommitTimeline } from "./CommitTimeline";
-
-const THEME_CHOICES: { value: ThemePreference; label: string; title: string }[] = [
-  { value: "system", label: "Auto", title: "Follow system theme" },
-  { value: "light", label: "Light", title: "Light theme" },
-  { value: "dark", label: "Dark", title: "Dark theme" },
-];
+import { SettingsMenu } from "./SettingsMenu";
 
 export function TopBar() {
   const activeRepoPath = useStore((s) => s.activeRepoPath);
@@ -18,15 +13,8 @@ export function TopBar() {
     activeRepoPath ? s.compare[activeRepoPath] ?? null : null,
   );
   const swapBranches = useStore((s) => s.swapBranches);
-  const toggleSidebar = useStore((s) => s.toggleSidebar);
-  const diffStyle = useStore((s) => s.diffStyle);
-  const setDiffStyle = useStore((s) => s.setDiffStyle);
   const commentMode = useStore((s) => s.commentMode);
   const toggleCommentMode = useStore((s) => s.toggleCommentMode);
-  const themePreference = useStore((s) => s.themePreference);
-  const setThemePreference = useStore((s) => s.setThemePreference);
-  const ignoreWhitespace = useStore((s) => s.ignoreWhitespace);
-  const toggleIgnoreWhitespace = useStore((s) => s.toggleIgnoreWhitespace);
   const setBranchPickerKind = useStore((s) => s.setBranchPickerKind);
   const fetching = useStore((s) =>
     activeRepoPath ? !!s.fetchingRepos[activeRepoPath] : false,
@@ -37,13 +25,6 @@ export function TopBar() {
   if (!activeRepoPath) {
     return (
       <header className="topbar">
-        <button
-          className="btn-icon"
-          onClick={toggleSidebar}
-          title="Toggle sidebar (⌘\\)"
-        >
-          ☰
-        </button>
         <span className="muted">Select a repository</span>
       </header>
     );
@@ -51,14 +32,6 @@ export function TopBar() {
 
   return (
     <header className="topbar">
-      <button
-        className="btn-icon"
-        onClick={toggleSidebar}
-        title="Toggle sidebar (⌘\\)"
-      >
-        ☰
-      </button>
-
       <button
         className={`btn-fetch ${fetching ? "fetching" : ""}`}
         onClick={() => fetchRemote(activeRepoPath)}
@@ -120,50 +93,27 @@ export function TopBar() {
 
       <div className="topbar-tools">
         <button
-          className={`btn-toggle ${ignoreWhitespace ? "active" : ""}`}
-          onClick={() => toggleIgnoreWhitespace()}
-          title="Ignore whitespace (w) — pass -w to git diff"
-        >
-          ⌴
-        </button>
-        <button
           className={`btn-toggle btn-comment-mode ${commentMode ? "active" : ""}`}
           onClick={() => toggleCommentMode()}
           title="Toggle comment mode (c) — drag-select lines to leave a review note"
+          aria-pressed={commentMode}
+          aria-label="Toggle comment mode"
         >
-          💬
-        </button>
-        <button
-          className={`btn-toggle ${diffStyle === "split" ? "active" : ""}`}
-          onClick={() => setDiffStyle("split")}
-          title="Side-by-side diff"
-        >
-          ⇉
-        </button>
-        <button
-          className={`btn-toggle ${diffStyle === "unified" ? "active" : ""}`}
-          onClick={() => setDiffStyle("unified")}
-          title="Unified diff (⌘L to toggle)"
-        >
-          ☰
-        </button>
-      </div>
-
-      <div className="topbar-tools topbar-theme" role="radiogroup" aria-label="Theme">
-        {THEME_CHOICES.map((choice) => (
-          <button
-            key={choice.value}
-            className={`btn-theme ${
-              themePreference === choice.value ? "active" : ""
-            }`}
-            onClick={() => setThemePreference(choice.value)}
-            title={choice.title}
-            role="radio"
-            aria-checked={themePreference === choice.value}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
           >
-            {choice.label}
-          </button>
-        ))}
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+        <SettingsMenu />
       </div>
     </header>
   );
