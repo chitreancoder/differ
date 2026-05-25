@@ -247,6 +247,9 @@ type Props = {
   onAddComment: (c: ReviewComment) => void;
   onUpdateComment: (id: string, patch: Partial<ReviewComment>) => void;
   onRemoveComment: (id: string) => void;
+  /** Fires when the file at the top of the diff viewport changes. Lets the
+   *  parent sync the file tree's highlight to wherever scrolling lands. */
+  onVisibleFileChange?: (path: string) => void;
 };
 
 export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
@@ -264,6 +267,7 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
       onAddComment,
       onUpdateComment,
       onRemoveComment,
+      onVisibleFileChange,
     },
     ref,
   ) {
@@ -394,6 +398,24 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
           });
         },
       }),
+      [],
+    );
+
+    // RAF-throttled scroll handler: figures out which file's header is anchored
+    // at the top of the viewport and notifies the parent so the file tree's
+    // highlight follows the diff. Pierre fires onScroll a lot — without the RAF
+    // gate we'd churn the store on every wheel tick.
+    const scrollFrame = useRef<number | null>(null);
+    const lastVisibleFile = useRef<string | null>(null);
+    const itemsRef = useRef(items);
+    itemsRef.current = items;
+    const onVisibleFileChangeRef = useRef(onVisibleFileChange);
+    onVisibleFileChangeRef.current = onVisibleFileChange;
+    useEffect(
+      () => () => {
+        if (scrollFrame.current != null)
+          cancelAnimationFrame(scrollFrame.current);
+      },
       [],
     );
 
@@ -654,6 +676,33 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
             onSelectedLinesChange={handleSelectedLinesChange}
             renderAnnotation={renderAnnotation}
             renderHeaderMetadata={renderHeaderMetadata}
+            onScroll={(scrollTop, viewer) => {
+              const cb = onVisibleFileChangeRef.current;
+              if (!cb) return;
+              if (scrollFrame.current != null) return;
+              scrollFrame.current = requestAnimationFrame(() => {
+                scrollFrame.current = null;
+                // Find the item whose top offset is the largest value
+                // satisfying `top <= scrollTop` — that's the file whose
+                // sticky header is currently anchored at the viewport top.
+                // A small offset absorbs sub-pixel rounding.
+                let bestId: string | null = null;
+                let bestTop = -Infinity;
+                const cutoff = scrollTop + 1;
+                for (const item of itemsRef.current) {
+                  const top = viewer.getTopForItem(item.id);
+                  if (top == null) continue;
+                  if (top <= cutoff && top > bestTop) {
+                    bestTop = top;
+                    bestId = item.id;
+                  }
+                }
+                if (bestId && bestId !== lastVisibleFile.current) {
+                  lastVisibleFile.current = bestId;
+                  cb(bestId);
+                }
+              });
+            }}
             options={{
               diffStyle,
               themeType: theme,

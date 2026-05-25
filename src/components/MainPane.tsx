@@ -100,14 +100,34 @@ export function MainPane() {
     [scopeComments],
   );
 
+  // The latest file the *diff viewport* reported as anchored at its top —
+  // used to break the would-be feedback loop with the useEffect below.
+  const lastReportedVisibleFile = useRef<string | null>(null);
+  const handleVisibleFileChange = useCallback(
+    (path: string) => {
+      lastReportedVisibleFile.current = path;
+      setCurrentFilePath(path);
+    },
+    [setCurrentFilePath],
+  );
+
   const selectFile = (path: string) => {
+    // Just update the path — the effect below will drive the scroll.
     setCurrentFilePath(path);
-    codeViewRef.current?.scrollToFile(path);
   };
 
   useEffect(() => {
     ensureReviewedScope(scope);
   }, [scope, ensureReviewedScope]);
+
+  // When currentFilePath changes (j/k, tree click, palette jump, …) scroll
+  // the diff to that file — unless the change *came from* a diff-scroll
+  // (onVisibleFileChange), in which case we're already there.
+  useEffect(() => {
+    if (!currentFilePath) return;
+    if (lastReportedVisibleFile.current === currentFilePath) return;
+    codeViewRef.current?.scrollToFile(currentFilePath);
+  }, [currentFilePath]);
 
   useEffect(() => {
     setCurrentFiles(files);
@@ -254,6 +274,7 @@ export function MainPane() {
             onAddComment={(c) => addComment(scope, c)}
             onUpdateComment={(id, patch) => updateComment(scope, id, patch)}
             onRemoveComment={(id) => removeComment(scope, id)}
+            onVisibleFileChange={handleVisibleFileChange}
           />
         ) : (
           <div className="empty-card">
