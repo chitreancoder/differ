@@ -216,6 +216,10 @@ button:disabled {
   min-width: 0;
 }
 
+.topbar-spacer {
+  flex: 1;
+}
+
 .btn-icon {
   width: 28px;
   height: 28px;

@@ -26,6 +26,10 @@ export function TopBar() {
     return (
       <header className="topbar">
         <span className="muted">Select a repository</span>
+        <span className="topbar-spacer" />
+        <div className="topbar-tools">
+          <SettingsMenu />
+        </div>
       </header>
     );
   }
