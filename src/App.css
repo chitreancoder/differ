@@ -332,6 +332,65 @@ button:disabled {
   padding-left: 8px;
 }
 
+/* Commit filter — small text input at the head of the strip. Filters chips
+   in-place by substring across SHA, message, and author. */
+.commit-filter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.commit-filter-input {
+  width: 130px;
+  height: 26px;
+  padding: 0 22px 0 10px;
+  font: inherit;
+  font-size: 11px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+}
+
+.commit-filter-input::placeholder {
+  color: var(--fg-muted);
+}
+
+.commit-filter-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.commit-filter-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.commit-filter-clear:hover {
+  color: var(--fg);
+  background: var(--bg-hover);
+}
+
+.commit-filter-empty {
+  font-size: 11px;
+  padding: 0 8px;
+}
+
 .commit-chip {
   display: inline-flex;
   align-items: center;

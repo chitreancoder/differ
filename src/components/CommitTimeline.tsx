@@ -107,6 +107,23 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
   const stripRef = useRef<HTMLDivElement>(null);
   const hoverTimer = useRef<number | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  // Local filter — case-insensitive substring across sha + message + author.
+  // Reset whenever the comparison changes so a stale query doesn't hide every
+  // commit in the new range.
+  const [filter, setFilter] = useState("");
+  useEffect(() => {
+    setFilter("");
+  }, [repoPath, base, compare]);
+  const trimmed = filter.trim().toLowerCase();
+  const visibleCommits = trimmed
+    ? commits.filter(
+        (c) =>
+          c.sha.toLowerCase().includes(trimmed) ||
+          c.shortSha.toLowerCase().includes(trimmed) ||
+          c.summary.toLowerCase().includes(trimmed) ||
+          c.authorName.toLowerCase().includes(trimmed),
+      )
+    : commits;
 
   const showTooltip = (commit: Commit, target: HTMLElement) => {
     if (hoverTimer.current != null) window.clearTimeout(hoverTimer.current);
@@ -205,14 +222,45 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
         onScroll={hideTooltip}
         onPointerLeave={hideTooltip}
       >
+        <div className="commit-filter">
+          <input
+            type="text"
+            className="commit-filter-input"
+            placeholder="Filter commits…"
+            value={filter}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
+            onChange={(e) => setFilter(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && filter) {
+                e.stopPropagation();
+                setFilter("");
+              }
+            }}
+          />
+          {filter && (
+            <button
+              className="commit-filter-clear"
+              onClick={() => setFilter("")}
+              title="Clear filter"
+              aria-label="Clear filter"
+            >
+              ×
+            </button>
+          )}
+        </div>
         <button
           className={`commit-chip all ${selectedCommit === null ? "active" : ""}`}
           onClick={() => setSelectedCommit(repoPath, null)}
           title="Show cumulative branch diff"
         >
-          All ({commits.length})
+          All ({trimmed ? `${visibleCommits.length}/${commits.length}` : commits.length})
         </button>
-        {commits.map((commit) => {
+        {visibleCommits.length === 0 && trimmed && (
+          <span className="commit-filter-empty muted">No matches</span>
+        )}
+        {visibleCommits.map((commit) => {
           const active = selectedCommit === commit.sha;
           return (
             <button
