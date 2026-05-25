@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { useCommits } from "@/state/commits";
+import {
+  fetchCommitStats,
+  peekCommitStats,
+  type CommitStats,
+} from "@/state/commitStats";
 import { useStore } from "@/state/store";
 import { Popover } from "@/components/Popover";
-import { isWorkingTree, type Commit, type FileEntry } from "@/types";
+import { isWorkingTree, type Commit } from "@/types";
 import { relativeTimeFromSeconds } from "@/utils/time";
 import { nameInitials } from "@/utils/avatar";
 
@@ -15,67 +19,6 @@ type Props = {
   base: string | null;
   compare: string | null;
 };
-
-type CommitStats = {
-  fileCount: number;
-  additions: number;
-  deletions: number;
-  topFiles: { path: string; additions: number; deletions: number }[];
-};
-
-/**
- * Module-level cache for commit stats. Keyed by `${repoPath}|${sha}|${ws}` so a
- * single SHA on disk only ever costs one `diff_commit_name_status` invocation
- * per (repo, whitespace mode) — SHAs are immutable so the result is safe to
- * memoize for the life of the session.
- */
-const statsCache = new Map<string, CommitStats>();
-
-function statsKey(repoPath: string, sha: string, ignoreWhitespace: boolean) {
-  return `${repoPath}|${sha}|${ignoreWhitespace ? 1 : 0}`;
-}
-
-async function fetchCommitStats(
-  repoPath: string,
-  sha: string,
-  ignoreWhitespace: boolean,
-): Promise<CommitStats> {
-  const key = statsKey(repoPath, sha, ignoreWhitespace);
-  const cached = statsCache.get(key);
-  if (cached) return cached;
-  const files = await invoke<FileEntry[]>("diff_commit_name_status", {
-    path: repoPath,
-    sha,
-    ignoreWhitespace,
-  });
-  let additions = 0;
-  let deletions = 0;
-  for (const f of files) {
-    additions += f.additions;
-    deletions += f.deletions;
-  }
-  const topFiles = files
-    .filter((f) => !f.isBinary)
-    .slice()
-    .sort(
-      (a, b) =>
-        b.additions + b.deletions - (a.additions + a.deletions),
-    )
-    .slice(0, 3)
-    .map((f) => ({
-      path: f.path,
-      additions: f.additions,
-      deletions: f.deletions,
-    }));
-  const stats: CommitStats = {
-    fileCount: files.length,
-    additions,
-    deletions,
-    topFiles,
-  };
-  statsCache.set(key, stats);
-  return stats;
-}
 
 function formatNumber(n: number): string {
   if (n < 1000) return String(n);
@@ -290,7 +233,7 @@ function CommitTooltipBody({
   ignoreWhitespace: boolean;
 }) {
   const [stats, setStats] = useState<CommitStats | null>(
-    () => statsCache.get(statsKey(repoPath, commit.sha, ignoreWhitespace)) ?? null,
+    () => peekCommitStats(repoPath, commit.sha, ignoreWhitespace),
   );
 
   useEffect(() => {

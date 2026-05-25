@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { FileEntry } from "@/types";
 import { isWorkingTree } from "@/types";
 import { useStore } from "@/state/store";
+import { rememberCommitFiles } from "@/state/commitStats";
 
 export type TreeNode =
   | {
@@ -69,6 +70,11 @@ export function useDiffFiles(
       .then((list) => {
         if (cancelled) return;
         setFiles(list);
+        // When we just resolved a single-commit diff, prime the shared cache
+        // so the CommitTimeline tooltip doesn't re-fetch the same data.
+        if (selectedCommit) {
+          rememberCommitFiles(repoPath, selectedCommit, ignoreWhitespace, list);
+        }
       })
       .catch((err) => {
         if (cancelled) return;
