@@ -6,6 +6,7 @@ import { fetchRemote, refreshAll } from "../state/refresh";
 import { useEffectiveTheme } from "../theme";
 import { FileTree } from "./FileTree";
 import { CodeViewPane, type CodeViewPaneHandle } from "./CodeViewPane";
+import { Welcome } from "./Welcome";
 
 const NO_COLLAPSE = new Set<string>();
 
@@ -151,16 +152,7 @@ export function MainPane() {
   if (repos.length === 0) {
     return (
       <main className="main-pane empty">
-        <div className="empty-card">
-          <h2>Welcome to Differ</h2>
-          <p className="muted">
-            Add a repository to start comparing branches.
-          </p>
-          <p className="muted hint">
-            Tip: drop a folder anywhere in this window, or press{" "}
-            <kbd>⌘K</kbd> for the command palette.
-          </p>
-        </div>
+        <Welcome />
       </main>
     );
   }
