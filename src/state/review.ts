@@ -21,6 +21,8 @@ export function truncateSnippet(snippet: string): string {
 /**
  * Build a markdown review prompt grouped by file. The wrapper is intentionally
  * neutral — the user's note governs whether something is a fix or a question.
+ * Within a file, file-level notes come first, then line-anchored comments
+ * sorted by starting line.
  */
 export function buildClaudePrompt(comments: ReviewComment[]): string {
   const byFile = new Map<string, ReviewComment[]>();
@@ -36,14 +38,28 @@ export function buildClaudePrompt(comments: ReviewComment[]): string {
   ];
 
   for (const [file, fileComments] of byFile) {
-    for (const c of fileComments) {
+    const sorted = fileComments.slice().sort((a, b) => {
+      if (!a.range && b.range) return -1;
+      if (a.range && !b.range) return 1;
+      if (!a.range && !b.range) return a.createdAt - b.createdAt;
+      return a.range!.start - b.range!.start;
+    });
+    for (const c of sorted) {
+      if (!c.range) {
+        parts.push(`### ${file} (file-level)`);
+        parts.push(`> ${c.body.replace(/\n/g, "\n> ")}`);
+        parts.push("");
+        continue;
+      }
       const side = c.range.side === "old" ? "old" : "new";
       parts.push(
         `### ${file}:${formatRange(c.range.start, c.range.end)} (${side})`,
       );
-      const snippet = truncateSnippet(c.snippet);
-      for (const line of snippet.split("\n")) {
-        parts.push(`      ${line}`);
+      const snippet = truncateSnippet(c.snippet ?? "");
+      if (snippet) {
+        for (const line of snippet.split("\n")) {
+          parts.push(`      ${line}`);
+        }
       }
       parts.push(`> ${c.body.replace(/\n/g, "\n> ")}`);
       parts.push("");

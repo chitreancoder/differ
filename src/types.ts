@@ -54,8 +54,10 @@ export type ThemePreference = "system" | "light" | "dark";
 export type ReviewComment = {
   id: string; // crypto.randomUUID()
   file: string; // == CodeView item id / file path
-  range: { start: number; end: number; side: "old" | "new" };
-  snippet: string; // code text captured at creation
+  /** Absent ⇒ file-level note (no line anchor, no captured snippet). */
+  range?: { start: number; end: number; side: "old" | "new" };
+  /** Captured code text at creation; absent for file-level notes. */
+  snippet?: string;
   body: string; // freeform note
   createdAt: number;
   sent: boolean; // set true on export; reset to false if body edited

@@ -14,6 +14,7 @@ import {
 import {
   parsePatchFiles,
   type CodeViewDiffItem,
+  type CodeViewItem,
   type CodeViewLineSelection,
   type DiffLineAnnotation,
   type FileDiffMetadata,
@@ -101,22 +102,48 @@ function annotationsVersion(
   return h;
 }
 
-/** True if the comment's range still maps onto lines in the current diff. */
-function rangeExists(
+/**
+ * Bumps when anything that affects a file's header slot changes (file-level
+ * notes for that file, the global commentMode toggle, or a file-level draft
+ * being open for that file). Folded into the item's `version` so Pierre
+ * re-runs `renderHeaderMetadata`.
+ */
+function fileHeaderVersion(
+  fileNotes: ReviewComment[],
+  commentMode: boolean,
+  draftActive: boolean,
+): number {
+  let h = (commentMode ? 1 : 0) * 31 + (draftActive ? 2 : 0);
+  for (const c of fileNotes) {
+    const sig = `${c.id}|${c.sent ? 1 : 0}|${c.body}`;
+    for (let i = 0; i < sig.length; i++) {
+      h = (Math.imul(h, 31) + sig.charCodeAt(i)) | 0;
+    }
+  }
+  return h;
+}
+
+/** True if the comment is still anchored: a file-level note as long as the
+ *  file is present, a line note as long as its line range maps into the diff. */
+function commentAnchored(
   fileDiff: FileDiffMetadata | undefined,
   c: ReviewComment,
 ): boolean {
   if (!fileDiff) return false;
+  if (!c.range) return true; // file-level note: anchored by file existing
   return deriveSnippet(fileDiff, c.range.side, c.range.start, c.range.end) !== "";
 }
 
-type Draft = {
-  file: string;
-  start: number;
-  end: number;
-  side: "old" | "new";
-  snippet: string;
-};
+type Draft =
+  | {
+      kind: "line";
+      file: string;
+      start: number;
+      end: number;
+      side: "old" | "new";
+      snippet: string;
+    }
+  | { kind: "file"; file: string };
 
 type Props = {
   patch: string;
@@ -173,10 +200,10 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
       return map;
     }, [patch, scopeKey]);
 
-    // Comments whose range no longer maps onto the current diff. Surfaced in a
-    // small "detached" list rather than mis-anchored inline.
+    // Comments no longer anchored: file gone, or (for line notes) range no
+    // longer mapping. File-level notes survive any in-file change.
     const detached = useMemo(
-      () => comments.filter((c) => !rangeExists(fileDiffs.get(c.file), c)),
+      () => comments.filter((c) => !commentAnchored(fileDiffs.get(c.file), c)),
       [comments, fileDiffs],
     );
     const detachedIds = useMemo(
@@ -184,8 +211,22 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
       [detached],
     );
 
+    // File-level notes (no range), bucketed by file for fast header lookup.
+    const fileNotesByFile = useMemo(() => {
+      const m = new Map<string, ReviewComment[]>();
+      for (const c of comments) {
+        if (c.range || detachedIds.has(c.id)) continue;
+        const bucket = m.get(c.file);
+        if (bucket) bucket.push(c);
+        else m.set(c.file, [c]);
+      }
+      return m;
+    }, [comments, detachedIds]);
+
     const items = useMemo<CodeViewDiffItem<ReviewComment>[]>(() => {
-      // Group anchored comments + the live draft into per-file annotations.
+      // Group line-anchored comments + the live line draft into per-file
+      // annotations. File-level notes / drafts are rendered in the file's
+      // header metadata slot, not as Pierre annotations.
       const annByFile = new Map<string, DiffLineAnnotation<ReviewComment>[]>();
       const push = (file: string, ann: DiffLineAnnotation<ReviewComment>) => {
         const bucket = annByFile.get(file);
@@ -195,13 +236,14 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
 
       for (const c of comments) {
         if (detachedIds.has(c.id)) continue;
+        if (!c.range) continue; // file-level → header slot
         push(c.file, {
           side: toLibSide(c.range.side),
           lineNumber: c.range.end,
           metadata: c,
         });
       }
-      if (draft) {
+      if (draft && draft.kind === "line") {
         // A transient composer annotation carries an empty-id ReviewComment.
         push(draft.file, {
           side: toLibSide(draft.side),
@@ -220,14 +262,19 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
 
       const all = [...fileDiffs.values()].map((fileDiff) => {
         const annotations = annByFile.get(fileDiff.name);
+        const fileNotes = fileNotesByFile.get(fileDiff.name) ?? [];
+        const fileDraftActive =
+          draft?.kind === "file" && draft.file === fileDiff.name;
+        // Combined version: line annotations + file-header slot. Either kind
+        // of content change has to bump this so Pierre re-renders the item.
+        const aV = annotationsVersion(annotations, revealedId);
+        const fV = fileHeaderVersion(fileNotes, commentMode, fileDraftActive);
         return {
           id: fileDiff.name,
           type: "diff" as const,
           fileDiff,
           annotations,
-          // Content hash (not count) so draft→saved and reveal toggles
-          // re-render the item's annotations.
-          version: annotationsVersion(annotations, revealedId),
+          version: (Math.imul(aV, 31) + fV) | 0,
         };
       });
 
@@ -238,7 +285,16 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
       return all.sort(
         (a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity),
       );
-    }, [fileDiffs, comments, draft, detachedIds, fileOrder, revealedId]);
+    }, [
+      fileDiffs,
+      comments,
+      draft,
+      detachedIds,
+      fileOrder,
+      revealedId,
+      fileNotesByFile,
+      commentMode,
+    ]);
 
     useImperativeHandle(
       ref,
@@ -313,7 +369,15 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
         : "";
       // Fall back to the native selection text if derivation came up empty.
       if (!snippet) snippet = window.getSelection()?.toString() ?? "";
-      setDraft({ ...armed, snippet: truncateSnippet(snippet) });
+      setDraft({ kind: "line", ...armed, snippet: truncateSnippet(snippet) });
+    };
+
+    const startFileDraft = (file: string) => {
+      setDraft({ kind: "file", file });
+      // A file-level draft isn't a line selection; clear any armed range so
+      // the floating FAB disappears.
+      setSelection(null);
+      setRevealedId(null);
     };
 
     const closeDraft = () => {
@@ -328,6 +392,18 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
     const revealComment = (c: ReviewComment) => {
       if (revealedId === c.id) {
         clearHighlight();
+        return;
+      }
+      // File-level note: no line range to highlight — just scroll to the file.
+      if (!c.range) {
+        setSelection(null);
+        setRevealedId(c.id);
+        viewRef.current?.scrollTo({
+          type: "line",
+          id: c.file,
+          lineNumber: 1,
+          align: "start",
+        });
         return;
       }
       const libSide = toLibSide(c.range.side);
@@ -358,15 +434,25 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
         closeDraft();
         return;
       }
-      onAddComment({
-        id: crypto.randomUUID(),
-        file: draft.file,
-        range: { start: draft.start, end: draft.end, side: draft.side },
-        snippet: draft.snippet,
-        body: body.trim(),
-        createdAt: Date.now(),
-        sent: false,
-      });
+      if (draft.kind === "line") {
+        onAddComment({
+          id: crypto.randomUUID(),
+          file: draft.file,
+          range: { start: draft.start, end: draft.end, side: draft.side },
+          snippet: draft.snippet,
+          body: body.trim(),
+          createdAt: Date.now(),
+          sent: false,
+        });
+      } else {
+        onAddComment({
+          id: crypto.randomUUID(),
+          file: draft.file,
+          body: body.trim(),
+          createdAt: Date.now(),
+          sent: false,
+        });
+      }
       closeDraft();
     };
 
@@ -396,6 +482,35 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
           onDelete={() => deleteComment(meta.id)}
           onReveal={() => revealComment(meta)}
           isRevealed={revealedId === meta.id}
+        />
+      );
+    };
+
+    const renderHeaderMetadata = (item: CodeViewItem<ReviewComment>) => {
+      if (item.type !== "diff") return null;
+      const path = item.fileDiff.name;
+      const notes = fileNotesByFile.get(path) ?? [];
+      const fileDraftActive = draft?.kind === "file" && draft.file === path;
+      // Show nothing if there's no commentMode and no existing notes — keeps
+      // the header tidy on most files.
+      if (!commentMode && notes.length === 0) return null;
+      return (
+        <FileHeaderSlot
+          notes={notes}
+          commentMode={commentMode}
+          drafting={fileDraftActive}
+          onAdd={() => startFileDraft(path)}
+          onSaveDraft={saveDraft}
+          onCancelDraft={closeDraft}
+          onEdit={(id, body, prev) =>
+            onUpdateComment(id, {
+              body,
+              sent: body === prev.body ? prev.sent : false,
+            })
+          }
+          onDelete={deleteComment}
+          revealedId={revealedId}
+          onReveal={revealComment}
         />
       );
     };
@@ -436,6 +551,7 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
             selectedLines={selection}
             onSelectedLinesChange={handleSelectedLinesChange}
             renderAnnotation={renderAnnotation}
+            renderHeaderMetadata={renderHeaderMetadata}
             options={{
               diffStyle,
               themeType: theme,
@@ -458,19 +574,35 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
 );
 
 /**
- * Compact chip naming the lines a comment is attached to. The code itself is
- * already visible right above, so we don't re-quote it — instead, clicking the
- * chip re-highlights those (real, syntax-colored) lines via `onReveal`.
+ * Compact chip naming where a comment is attached. For line notes, clicking
+ * highlights those lines (Pierre's native, syntax-aware selection). For
+ * file-level notes, clicking scrolls to the top of the file.
  */
 function CommentContext({
   range,
   onReveal,
   active = false,
 }: {
-  range: ReviewComment["range"];
+  range?: ReviewComment["range"];
   onReveal?: () => void;
   active?: boolean;
 }) {
+  if (!range) {
+    if (!onReveal) {
+      return (
+        <span className="comment-loc-chip static file-level">File note</span>
+      );
+    }
+    return (
+      <button
+        className={`comment-loc-chip file-level ${active ? "active" : ""}`}
+        onClick={onReveal}
+        title="Scroll to file"
+      >
+        File note
+      </button>
+    );
+  }
   const loc =
     range.start === range.end
       ? `Line ${range.start}`
@@ -626,15 +758,18 @@ function DetachedComments({
   return (
     <div className="detached-comments">
       <div className="detached-title">
-        Detached comments ({comments.length}) — the lines they referenced no
-        longer exist in this diff. Still exported.
+        Detached comments ({comments.length}) — the file or lines they
+        referenced no longer exist in this diff. Still exported.
       </div>
       {comments.map((c) => (
         <div key={c.id} className="detached-item">
           <span className="detached-loc">
-            {c.file}:{c.range.start}
-            {c.range.end !== c.range.start ? `–${c.range.end}` : ""} (
-            {c.range.side})
+            {c.file}
+            {c.range
+              ? `:${c.range.start}${
+                  c.range.end !== c.range.start ? `–${c.range.end}` : ""
+                } (${c.range.side})`
+              : " (file-level)"}
           </span>
           {c.snippet && (
             <pre className="comment-context-snippet">{c.snippet}</pre>
@@ -645,6 +780,183 @@ function DetachedComments({
           </button>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Per-file widget injected into Pierre's file header via `renderHeaderMetadata`.
+ * Shows existing file-level notes inline, an "+ Add file note" button when
+ * in comment mode, and the composer when a file-level draft is active for
+ * this file.
+ */
+function FileHeaderSlot({
+  notes,
+  commentMode,
+  drafting,
+  onAdd,
+  onSaveDraft,
+  onCancelDraft,
+  onEdit,
+  onDelete,
+  revealedId,
+  onReveal,
+}: {
+  notes: ReviewComment[];
+  commentMode: boolean;
+  drafting: boolean;
+  onAdd: () => void;
+  onSaveDraft: (body: string) => void;
+  onCancelDraft: () => void;
+  onEdit: (id: string, body: string, prev: ReviewComment) => void;
+  onDelete: (id: string) => void;
+  revealedId: string | null;
+  onReveal: (c: ReviewComment) => void;
+}) {
+  return (
+    <div className="file-header-slot">
+      {notes.map((c) => (
+        <FileLevelNote
+          key={c.id}
+          comment={c}
+          onSave={(body) => onEdit(c.id, body, c)}
+          onDelete={() => onDelete(c.id)}
+          onReveal={() => onReveal(c)}
+          isRevealed={revealedId === c.id}
+        />
+      ))}
+      {drafting && (
+        <FileLevelComposer onSave={onSaveDraft} onCancel={onCancelDraft} />
+      )}
+      {commentMode && !drafting && (
+        <button
+          className="file-note-add"
+          onClick={onAdd}
+          title="Add a comment about this whole file"
+        >
+          + File note
+        </button>
+      )}
+    </div>
+  );
+}
+
+function FileLevelComposer({
+  onSave,
+  onCancel,
+}: {
+  onSave: (body: string) => void;
+  onCancel: () => void;
+}) {
+  const [body, setBody] = useState("");
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+  }, []);
+  return (
+    <div className="comment-composer file-level">
+      <CommentContext />
+      <textarea
+        ref={ref}
+        className="comment-textarea"
+        value={body}
+        placeholder="A note about this whole file…"
+        onChange={(e) => setBody(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            onCancel();
+          } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            onSave(body);
+          }
+        }}
+      />
+      <div className="comment-actions">
+        <button className="btn-primary btn-sm" onClick={() => onSave(body)}>
+          Save
+        </button>
+        <button className="btn-secondary btn-sm" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FileLevelNote({
+  comment,
+  onSave,
+  onDelete,
+  onReveal,
+  isRevealed,
+}: {
+  comment: ReviewComment;
+  onSave: (body: string) => void;
+  onDelete: () => void;
+  onReveal: () => void;
+  isRevealed: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [body, setBody] = useState(comment.body);
+
+  if (editing) {
+    return (
+      <div className="comment-composer file-level">
+        <textarea
+          className="comment-textarea"
+          value={body}
+          autoFocus
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              setBody(comment.body);
+              setEditing(false);
+            } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              onSave(body.trim());
+              setEditing(false);
+            }
+          }}
+        />
+        <div className="comment-actions">
+          <button
+            className="btn-primary btn-sm"
+            onClick={() => {
+              onSave(body.trim());
+              setEditing(false);
+            }}
+          >
+            Save
+          </button>
+          <button
+            className="btn-secondary btn-sm"
+            onClick={() => {
+              setBody(comment.body);
+              setEditing(false);
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="comment-saved file-level">
+      <CommentContext onReveal={onReveal} active={isRevealed} />
+      <div className="comment-body">{comment.body}</div>
+      <div className="comment-meta">
+        {comment.sent && <span className="comment-sent">sent ✓</span>}
+        <button className="comment-link" onClick={() => setEditing(true)}>
+          edit
+        </button>
+        <button className="comment-link" onClick={onDelete}>
+          delete
+        </button>
+      </div>
     </div>
   );
 }

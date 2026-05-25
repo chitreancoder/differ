@@ -1517,6 +1517,45 @@ code {
   color: var(--accent);
 }
 
+/* File-level notes — rendered in Pierre's file header metadata slot. */
+.file-header-slot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: stretch;
+  margin-left: 8px;
+  max-width: 100%;
+}
+
+.file-note-add {
+  align-self: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+}
+
+.file-note-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* File-level variants of composer & saved widgets — same look, no margin
+   "outside the file" since we're already inside the header band. */
+.comment-composer.file-level,
+.comment-saved.file-level {
+  margin: 0;
+  min-width: 220px;
+  max-width: 360px;
+}
+
+.comment-loc-chip.file-level {
+  text-transform: uppercase;
+}
+
 /* Detached comments list (range no longer present after a refresh). */
 .detached-comments {
   border: 1px solid var(--border);
