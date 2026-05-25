@@ -37,14 +37,18 @@ import { DiffSearch } from "./DiffSearch";
  *   with a comment. `position:relative` on the gutter cell lets us anchor the
  *   absolute-positioned dot. `light-dark()` keeps it readable in both themes.
  */
-const SHADOW_CSS = [
-  "[data-diffs-header][data-sticky]{will-change:transform;transform:translateZ(0)}",
-  "[data-column-number]{position:relative}",
-  ".commented-dot{position:absolute;left:2px;top:50%;transform:translateY(-50%);" +
-    "width:6px;height:6px;border-radius:50%;" +
-    "background:light-dark(#d97706,#f59e0b);" +
-    "cursor:pointer;z-index:1}",
-].join("");
+function shadowCSS(commentMode: boolean): string {
+  return [
+    "[data-diffs-header][data-sticky]{will-change:transform;transform:translateZ(0)}",
+    "[data-column-number]{position:relative}",
+    ".commented-dot{position:absolute;left:2px;top:50%;transform:translateY(-50%);" +
+      "width:6px;height:6px;border-radius:50%;" +
+      "background:light-dark(#d97706,#f59e0b);" +
+      "cursor:pointer;z-index:1}",
+    // In comment mode, body lines respond to click — hint with a pointer.
+    commentMode ? "[data-code] [data-line-index]{cursor:pointer}" : "",
+  ].join("");
+}
 
 export type CodeViewPaneHandle = {
   scrollToFile: (path: string) => void;
@@ -638,6 +642,54 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
             options={{
               diffStyle,
               themeType: theme,
+              onLineClick: (props, ctx) => {
+                // Only intercept body clicks while comment mode is on. The
+                // gutter has its own selection mechanism
+                // (enableLineSelection) so we leave numberColumn clicks
+                // alone.
+                if (!commentMode) return;
+                if (props.numberColumn) return;
+                if (!ctx || ctx.type !== "diff") return;
+                // Type narrows: diff context → DiffLineEventBaseProps.
+                if (!("annotationSide" in props)) return;
+                const file = ctx.item.id;
+                const libSide = props.annotationSide;
+                const line = props.lineNumber;
+                const existing = selection;
+                if (
+                  props.event.shiftKey &&
+                  existing &&
+                  existing.id === file
+                ) {
+                  // Shift+click: extend from the existing anchor
+                  // (range.start) to the clicked line. Allow crossing
+                  // sides via endSide.
+                  setSelection({
+                    id: file,
+                    range: {
+                      start: existing.range.start,
+                      end: line,
+                      side: existing.range.side,
+                      endSide: libSide,
+                    },
+                  });
+                } else {
+                  // Plain click: start a 1-line selection on this side.
+                  setSelection({
+                    id: file,
+                    range: {
+                      start: line,
+                      end: line,
+                      side: libSide,
+                      endSide: libSide,
+                    },
+                  });
+                }
+                // A new selection is an arming selection, not a reveal.
+                setRevealedId(null);
+                // Don't preventDefault — keep native text selection working
+                // for copy on double-click / native drag inside one line.
+              },
               // Gate Pierre's gutter line-selection on comment mode; off, native
               // text selection/copy works normally. Without this the gutter is
               // inert and onSelectedLinesChange never fires.
@@ -647,7 +699,7 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
               // — smoothest scrolling. Long lines scroll horizontally per file.
               overflow: "scroll",
               stickyHeaders: true,
-              unsafeCSS: SHADOW_CSS,
+              unsafeCSS: shadowCSS(commentMode),
               onPostRender: (node, instance) => {
                 stampCommentedDots(
                   node,
