@@ -250,6 +250,7 @@ export function MainPane() {
             commentMode={commentMode}
             comments={scopeComments}
             binaryFiles={binaryFiles}
+            authorName={activeRepo?.userName ?? null}
             onAddComment={(c) => addComment(scope, c)}
             onUpdateComment={(id, patch) => updateComment(scope, id, patch)}
             onRemoveComment={(id) => removeComment(scope, id)}

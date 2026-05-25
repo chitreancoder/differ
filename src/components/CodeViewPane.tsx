@@ -27,6 +27,7 @@ import { truncateSnippet } from "../state/review";
 import { useStore } from "../state/store";
 import { DiffSearch } from "./DiffSearch";
 import { relativeTimeFromMs } from "../utils/time";
+import { nameInitials } from "../utils/avatar";
 
 /**
  * Injected *into each file's Shadow DOM* via the `unsafeCSS` option — plain
@@ -240,6 +241,9 @@ type Props = {
   comments: ReviewComment[];
   /** Binary files can't be commented on. */
   binaryFiles: Set<string>;
+  /** `git config user.name` for the active repo. Drives the reviewer avatar
+   *  and display name on comment cards. Null falls back to "You" / "JR". */
+  authorName: string | null;
   onAddComment: (c: ReviewComment) => void;
   onUpdateComment: (id: string, patch: Partial<ReviewComment>) => void;
   onRemoveComment: (id: string) => void;
@@ -256,6 +260,7 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
       commentMode,
       comments,
       binaryFiles,
+      authorName,
       onAddComment,
       onUpdateComment,
       onRemoveComment,
@@ -539,6 +544,11 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
       closeDraft();
     };
 
+    // Author display + avatar derived once from git config (the active repo's
+    // user.name). Falls back to "You"/"ME" when no name is configured.
+    const authorDisplay = authorName ?? "You";
+    const authorAvatar = authorName ? nameInitials(authorName) : "ME";
+
     const renderAnnotation = (
       annotation:
         | DiffLineAnnotation<ReviewComment>
@@ -555,6 +565,8 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
       return (
         <SavedComment
           comment={meta}
+          authorDisplay={authorDisplay}
+          authorAvatar={authorAvatar}
           onSave={(body) =>
             onUpdateComment(meta.id, {
               body,
@@ -582,6 +594,8 @@ export const CodeViewPane = forwardRef<CodeViewPaneHandle, Props>(
           notes={notes}
           commentMode={commentMode}
           drafting={fileDraftActive}
+          authorDisplay={authorDisplay}
+          authorAvatar={authorAvatar}
           onAdd={() => startFileDraft(path)}
           onSaveDraft={saveDraft}
           onCancelDraft={closeDraft}
@@ -815,12 +829,16 @@ function Composer({
 
 function SavedComment({
   comment,
+  authorDisplay,
+  authorAvatar,
   onSave,
   onDelete,
   onReveal,
   isRevealed,
 }: {
   comment: ReviewComment;
+  authorDisplay: string;
+  authorAvatar: string;
   onSave: (body: string) => void;
   onDelete: () => void;
   onReveal: () => void;
@@ -876,8 +894,8 @@ function SavedComment({
   return (
     <div className="comment-saved">
       <div className="comment-saved-header">
-        <span className="comment-avatar">JR</span>
-        <span className="comment-author">You</span>
+        <span className="comment-avatar">{authorAvatar}</span>
+        <span className="comment-author">{authorDisplay}</span>
         <span className="comment-time">
           · {relativeTimeFromMs(comment.createdAt)} ago
         </span>
@@ -949,6 +967,8 @@ function FileHeaderSlot({
   notes,
   commentMode,
   drafting,
+  authorDisplay,
+  authorAvatar,
   onAdd,
   onSaveDraft,
   onCancelDraft,
@@ -960,6 +980,8 @@ function FileHeaderSlot({
   notes: ReviewComment[];
   commentMode: boolean;
   drafting: boolean;
+  authorDisplay: string;
+  authorAvatar: string;
   onAdd: () => void;
   onSaveDraft: (body: string) => void;
   onCancelDraft: () => void;
@@ -974,6 +996,8 @@ function FileHeaderSlot({
         <FileLevelNote
           key={c.id}
           comment={c}
+          authorDisplay={authorDisplay}
+          authorAvatar={authorAvatar}
           onSave={(body) => onEdit(c.id, body, c)}
           onDelete={() => onDelete(c.id)}
           onReveal={() => onReveal(c)}
@@ -1041,12 +1065,16 @@ function FileLevelComposer({
 
 function FileLevelNote({
   comment,
+  authorDisplay,
+  authorAvatar,
   onSave,
   onDelete,
   onReveal,
   isRevealed,
 }: {
   comment: ReviewComment;
+  authorDisplay: string;
+  authorAvatar: string;
   onSave: (body: string) => void;
   onDelete: () => void;
   onReveal: () => void;
@@ -1102,8 +1130,8 @@ function FileLevelNote({
   return (
     <div className="comment-saved file-level">
       <div className="comment-saved-header">
-        <span className="comment-avatar">JR</span>
-        <span className="comment-author">You</span>
+        <span className="comment-avatar">{authorAvatar}</span>
+        <span className="comment-author">{authorDisplay}</span>
         <span className="comment-time">
           · {relativeTimeFromMs(comment.createdAt)} ago
         </span>

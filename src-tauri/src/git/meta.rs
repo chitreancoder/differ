@@ -29,11 +29,19 @@ pub fn validate_repo(path: String) -> Result<RepoInfo, String> {
 
     let default_branch = resolve_default_branch(&repo);
 
+    let user_name = repo
+        .config()
+        .ok()
+        .and_then(|cfg| cfg.get_string("user.name").ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
     Ok(RepoInfo {
         path: canonical,
         name,
         default_branch,
         head_branch,
+        user_name,
     })
 }
 

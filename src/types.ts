@@ -3,6 +3,9 @@ export type Repo = {
   name: string;
   defaultBranch: string | null;
   headBranch: string | null;
+  /** Resolved `git config user.name` for this repo. Used for the
+   *  reviewer avatar/name on comment cards. */
+  userName: string | null;
   missing?: boolean;
 };
 

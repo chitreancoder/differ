@@ -7,6 +7,10 @@ pub struct RepoInfo {
     pub name: String,
     pub default_branch: Option<String>,
     pub head_branch: Option<String>,
+    /// `git config user.name` resolved for this repo (falls back to the global
+    /// config since git2's repo.config() merges global into the repo view).
+    /// Absent if not configured.
+    pub user_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
