@@ -1556,6 +1556,28 @@ code {
   text-transform: uppercase;
 }
 
+/* "Files with comments" filter chip in the tree header. */
+.filetree-filter-btn {
+  margin-left: auto;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.filetree-filter-btn:hover {
+  color: var(--fg);
+}
+
+.filetree-filter-btn.active {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 /* Detached comments list (range no longer present after a refresh). */
 .detached-comments {
   border: 1px solid var(--border);

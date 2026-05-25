@@ -23,6 +23,9 @@ export function CommandPalette() {
   const toggleCommentMode = useStore((s) => s.toggleCommentMode);
   const setThemePreference = useStore((s) => s.setThemePreference);
   const toggleIgnoreWhitespace = useStore((s) => s.toggleIgnoreWhitespace);
+  const toggleCommentsOnlyFilter = useStore(
+    (s) => s.toggleCommentsOnlyFilter,
+  );
   const setCurrentFilePath = useStore((s) => s.setCurrentFilePath);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -183,6 +186,15 @@ export function CommandPalette() {
               >
                 Toggle ignore whitespace{" "}
                 <span className="palette-shortcut">w</span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => {
+                  toggleCommentsOnlyFilter();
+                  close();
+                }}
+              >
+                Toggle "files with comments" filter{" "}
+                <span className="palette-shortcut">f</span>
               </Command.Item>
               <Command.Item
                 value="theme system follow auto"

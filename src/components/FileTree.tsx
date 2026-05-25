@@ -17,6 +17,9 @@ type Props = {
   loading: boolean;
   selectedPath: string | null;
   reviewed: Set<string>;
+  /** Files with ≥1 comment in the current scope; drives the comments-only
+   *  filter and the badge in the tree header. */
+  commentedFiles: Set<string>;
   onSelect: (path: string) => void;
 };
 
@@ -58,24 +61,37 @@ export function FileTree({
   loading,
   selectedPath,
   reviewed,
+  commentedFiles,
   onSelect,
 }: Props) {
   const collapsed = useStore((s) => s.collapsedFolders);
   const toggleFolder = useStore((s) => s.toggleFolder);
+  const commentsOnlyFilter = useStore((s) => s.commentsOnlyFilter);
+  const toggleCommentsOnlyFilter = useStore(
+    (s) => s.toggleCommentsOnlyFilter,
+  );
   const parentRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
 
   const trimmedQuery = query.trim().toLowerCase();
   const filteredFiles = useMemo(() => {
-    if (!trimmedQuery) return files;
-    return files.filter((f) => f.path.toLowerCase().includes(trimmedQuery));
-  }, [files, trimmedQuery]);
+    let out = files;
+    if (commentsOnlyFilter) {
+      out = out.filter((f) => commentedFiles.has(f.path));
+    }
+    if (trimmedQuery) {
+      out = out.filter((f) => f.path.toLowerCase().includes(trimmedQuery));
+    }
+    return out;
+  }, [files, trimmedQuery, commentsOnlyFilter, commentedFiles]);
+  const someFilterActive = commentsOnlyFilter || !!trimmedQuery;
 
   const tree = useMemo(() => buildTree(filteredFiles), [filteredFiles]);
-  // While filtering, ignore collapsed state so every match is visible.
+  // While any filter is active, ignore collapsed state so every match is
+  // visible.
   const rows = useMemo(
-    () => flattenTree(tree, trimmedQuery ? EMPTY_COLLAPSE : collapsed),
-    [tree, collapsed, trimmedQuery],
+    () => flattenTree(tree, someFilterActive ? EMPTY_COLLAPSE : collapsed),
+    [tree, collapsed, someFilterActive],
   );
 
   const totals = useMemo(() => {
@@ -107,15 +123,27 @@ export function FileTree({
     <div className="filetree">
       <div className="filetree-header">
         <span className="filetree-count">
-          {trimmedQuery
+          {someFilterActive
             ? `${filteredFiles.length} of ${files.length}`
             : `${files.length} ${files.length === 1 ? "file" : "files"}`}
         </span>
-        {!trimmedQuery && (totals.additions > 0 || totals.deletions > 0) && (
+        {!someFilterActive && (totals.additions > 0 || totals.deletions > 0) && (
           <span className="filetree-totals">
             <span className="counts-add">+{totals.additions}</span>{" "}
             <span className="counts-del">−{totals.deletions}</span>
           </span>
+        )}
+        {(commentedFiles.size > 0 || commentsOnlyFilter) && (
+          <button
+            className={`filetree-filter-btn ${
+              commentsOnlyFilter ? "active" : ""
+            }`}
+            onClick={() => toggleCommentsOnlyFilter()}
+            title="Show only files with comments (f)"
+            aria-pressed={commentsOnlyFilter}
+          >
+            💬 {commentedFiles.size}
+          </button>
         )}
         {loading && <span className="muted filetree-loading">…</span>}
       </div>
@@ -151,8 +179,12 @@ export function FileTree({
       )}
       {!loading && files.length === 0 ? (
         <div className="filetree-empty muted">No files changed</div>
-      ) : trimmedQuery && filteredFiles.length === 0 ? (
-        <div className="filetree-empty muted">No files match “{query.trim()}”</div>
+      ) : filteredFiles.length === 0 ? (
+        <div className="filetree-empty muted">
+          {trimmedQuery
+            ? `No files match “${query.trim()}”`
+            : "No files with comments yet"}
+        </div>
       ) : (
         <div ref={parentRef} className="filetree-scroll">
           <div

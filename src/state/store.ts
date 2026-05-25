@@ -32,6 +32,9 @@ type State = {
   comments: Record<string, ReviewComment[]>;
   themePreference: ThemePreference;
   ignoreWhitespace: boolean;
+  /** Transient view filter: when true, the file tree only shows files with
+   *  at least one comment in the current scope. Reset on every cold start. */
+  commentsOnlyFilter: boolean;
   hydrated: boolean;
 };
 
@@ -78,6 +81,8 @@ type Actions = {
   cycleThemePreference: () => void;
   setIgnoreWhitespace: (on: boolean) => void;
   toggleIgnoreWhitespace: () => void;
+  toggleCommentsOnlyFilter: () => void;
+  setCommentsOnlyFilter: (on: boolean) => void;
 };
 
 let toastSeq = 0;
@@ -106,6 +111,7 @@ export const useStore = create<State & Actions>((set) => ({
   comments: {},
   themePreference: "system",
   ignoreWhitespace: false,
+  commentsOnlyFilter: false,
   hydrated: false,
 
   hydrate: (data) => set((s) => ({ ...s, ...data, hydrated: true })),
@@ -266,4 +272,7 @@ export const useStore = create<State & Actions>((set) => ({
   setIgnoreWhitespace: (on) => set({ ignoreWhitespace: on }),
   toggleIgnoreWhitespace: () =>
     set((s) => ({ ignoreWhitespace: !s.ignoreWhitespace })),
+  setCommentsOnlyFilter: (on) => set({ commentsOnlyFilter: on }),
+  toggleCommentsOnlyFilter: () =>
+    set((s) => ({ commentsOnlyFilter: !s.commentsOnlyFilter })),
 }));

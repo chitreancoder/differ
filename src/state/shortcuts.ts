@@ -74,10 +74,21 @@ export function useShortcuts() {
       if (meta || e.altKey) return;
       if (isTypingTarget(e.target)) return;
 
-      const visible = visibleFilePaths(
-        store.currentFiles,
-        store.collapsedFolders,
-      );
+      // Respect the comments-only filter for keyboard nav so j/k can't land
+      // on a file the tree is currently hiding.
+      let navFiles = store.currentFiles;
+      if (store.commentsOnlyFilter) {
+        const repo = store.activeRepoPath;
+        const b = repo ? store.base[repo] : undefined;
+        const c = repo ? store.compare[repo] : undefined;
+        const sc = repo ? store.selectedCommit[repo] ?? "" : "";
+        const scopeKey =
+          repo && b && c ? `${repo}|${b}|${c}|${sc}` : null;
+        const bucket = scopeKey ? store.comments[scopeKey] ?? [] : [];
+        const commented = new Set(bucket.map((cm) => cm.file));
+        navFiles = navFiles.filter((f) => commented.has(f.path));
+      }
+      const visible = visibleFilePaths(navFiles, store.collapsedFolders);
       const current = store.currentFilePath;
       const idx = current ? visible.indexOf(current) : -1;
 
@@ -155,6 +166,12 @@ export function useShortcuts() {
       if (lower === "w") {
         e.preventDefault();
         store.toggleIgnoreWhitespace();
+        return;
+      }
+
+      if (lower === "f") {
+        e.preventDefault();
+        store.toggleCommentsOnlyFilter();
         return;
       }
 

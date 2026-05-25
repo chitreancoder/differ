@@ -95,6 +95,11 @@ export function MainPane() {
     [files],
   );
 
+  const commentedFiles = useMemo(
+    () => new Set(scopeComments.map((c) => c.file)),
+    [scopeComments],
+  );
+
   const selectFile = (path: string) => {
     setCurrentFilePath(path);
     codeViewRef.current?.scrollToFile(path);
@@ -193,6 +198,7 @@ export function MainPane() {
           loading={loading}
           selectedPath={currentFilePath}
           reviewed={reviewed}
+          commentedFiles={commentedFiles}
           onSelect={selectFile}
         />
       </div>
