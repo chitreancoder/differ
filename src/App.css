@@ -1639,6 +1639,49 @@ code {
   cursor: not-allowed;
 }
 
+/* Custom commit-chip tooltip — fixed-positioned so it isn't clipped by the
+   strip's overflow:auto. Browser native title is disabled in favour of this. */
+.commit-tooltip {
+  position: fixed;
+  z-index: 60;
+  max-width: 360px;
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--fg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: pre-wrap;
+}
+
+.commit-tooltip-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 2px;
+}
+
+.commit-tooltip-sha {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.commit-tooltip-author {
+  font-size: 10.5px;
+  color: var(--fg-muted);
+}
+
+.commit-tooltip-summary {
+  font-weight: 500;
+}
+
 /* Detached comments list (range no longer present after a refresh). */
 .detached-comments {
   border: 1px solid var(--border);

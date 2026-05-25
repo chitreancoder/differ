@@ -1,12 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCommits } from "../state/commits";
 import { useStore } from "../state/store";
-import { isWorkingTree } from "../types";
+import { isWorkingTree, type Commit } from "../types";
+
+const TOOLTIP_DELAY_MS = 1000;
 
 type Props = {
   repoPath: string;
   base: string | null;
   compare: string | null;
+};
+
+type Tooltip = {
+  commit: Commit;
+  left: number;
+  top: number;
 };
 
 export function CommitTimeline({ repoPath, base, compare }: Props) {
@@ -16,6 +24,35 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
   const setSelectedCommit = useStore((s) => s.setSelectedCommit);
   const { commits, loading } = useCommits(repoPath, base, compare);
   const stripRef = useRef<HTMLDivElement>(null);
+  const hoverTimer = useRef<number | null>(null);
+  const [tooltip, setTooltip] = useState<Tooltip | null>(null);
+
+  const showTooltip = (commit: Commit, target: HTMLElement) => {
+    if (hoverTimer.current != null) window.clearTimeout(hoverTimer.current);
+    hoverTimer.current = window.setTimeout(() => {
+      const rect = target.getBoundingClientRect();
+      setTooltip({
+        commit,
+        left: rect.left + rect.width / 2,
+        top: rect.bottom + 6,
+      });
+      hoverTimer.current = null;
+    }, TOOLTIP_DELAY_MS);
+  };
+  const hideTooltip = () => {
+    if (hoverTimer.current != null) {
+      window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setTooltip(null);
+  };
+  // Belt-and-suspenders: clear any pending timer on unmount.
+  useEffect(
+    () => () => {
+      if (hoverTimer.current != null) window.clearTimeout(hoverTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!selectedCommit) return;
@@ -66,32 +103,58 @@ export function CommitTimeline({ repoPath, base, compare }: Props) {
     return <div className="commit-timeline empty muted">No commits in range</div>;
   }
 
+  // Scroll inside the strip while hovered should dismiss the tooltip — its
+  // anchored screen position would otherwise drift away from the chip.
   return (
-    <div className="commit-timeline" ref={stripRef}>
-      <button
-        className={`commit-chip all ${selectedCommit === null ? "active" : ""}`}
-        onClick={() => setSelectedCommit(repoPath, null)}
-        title="Show cumulative branch diff"
+    <>
+      <div
+        className="commit-timeline"
+        ref={stripRef}
+        onScroll={hideTooltip}
+        onPointerLeave={hideTooltip}
       >
-        All ({commits.length})
-      </button>
-      {commits.map((commit) => {
-        const active = selectedCommit === commit.sha;
-        return (
-          <button
-            key={commit.sha}
-            data-sha={commit.sha}
-            className={`commit-chip ${active ? "active" : ""} ${commit.isMerge ? "merge" : ""}`}
-            onClick={() =>
-              setSelectedCommit(repoPath, active ? null : commit.sha)
-            }
-            title={`${commit.shortSha} · ${commit.authorName}\n${commit.summary}`}
-          >
-            <span className="commit-sha">{commit.shortSha}</span>
-            <span className="commit-summary">{commit.summary}</span>
-          </button>
-        );
-      })}
-    </div>
+        <button
+          className={`commit-chip all ${selectedCommit === null ? "active" : ""}`}
+          onClick={() => setSelectedCommit(repoPath, null)}
+          title="Show cumulative branch diff"
+        >
+          All ({commits.length})
+        </button>
+        {commits.map((commit) => {
+          const active = selectedCommit === commit.sha;
+          return (
+            <button
+              key={commit.sha}
+              data-sha={commit.sha}
+              className={`commit-chip ${active ? "active" : ""} ${commit.isMerge ? "merge" : ""}`}
+              onClick={() =>
+                setSelectedCommit(repoPath, active ? null : commit.sha)
+              }
+              onPointerEnter={(e) => showTooltip(commit, e.currentTarget)}
+              onPointerLeave={hideTooltip}
+              aria-label={`${commit.shortSha} by ${commit.authorName}: ${commit.summary}`}
+            >
+              <span className="commit-sha">{commit.shortSha}</span>
+              <span className="commit-summary">{commit.summary}</span>
+            </button>
+          );
+        })}
+      </div>
+      {tooltip && (
+        <div
+          className="commit-tooltip"
+          role="tooltip"
+          style={{ left: tooltip.left, top: tooltip.top }}
+        >
+          <div className="commit-tooltip-head">
+            <span className="commit-tooltip-sha">{tooltip.commit.shortSha}</span>
+            <span className="commit-tooltip-author">
+              {tooltip.commit.authorName}
+            </span>
+          </div>
+          <div className="commit-tooltip-summary">{tooltip.commit.summary}</div>
+        </div>
+      )}
+    </>
   );
 }
