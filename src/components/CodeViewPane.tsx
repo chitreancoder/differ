@@ -26,6 +26,7 @@ import { poolOptions, highlighterOptions } from "../diffs/workerPool";
 import { truncateSnippet } from "../state/review";
 import { useStore } from "../state/store";
 import { DiffSearch } from "./DiffSearch";
+import { relativeTimeFromMs } from "../utils/time";
 
 /**
  * Injected *into each file's Shadow DOM* via the `unsafeCSS` option — plain
@@ -874,20 +875,29 @@ function SavedComment({
 
   return (
     <div className="comment-saved">
-      <CommentContext
-        range={comment.range}
-        onReveal={onReveal}
-        active={isRevealed}
-      />
+      <div className="comment-saved-header">
+        <span className="comment-avatar">JR</span>
+        <span className="comment-author">You</span>
+        <span className="comment-time">
+          · {relativeTimeFromMs(comment.createdAt)} ago
+        </span>
+        <span className="comment-saved-spacer" />
+        <CommentContext
+          range={comment.range}
+          onReveal={onReveal}
+          active={isRevealed}
+        />
+      </div>
       <div className="comment-body">{comment.body}</div>
       <div className="comment-meta">
-        {comment.sent && <span className="comment-sent">sent ✓</span>}
         <button className="comment-link" onClick={() => setEditing(true)}>
-          edit
+          Edit
         </button>
         <button className="comment-link" onClick={onDelete}>
-          delete
+          Delete
         </button>
+        <span className="comment-saved-spacer" />
+        {comment.sent && <span className="comment-sent">sent ✓</span>}
       </div>
     </div>
   );
@@ -1091,16 +1101,25 @@ function FileLevelNote({
 
   return (
     <div className="comment-saved file-level">
-      <CommentContext onReveal={onReveal} active={isRevealed} />
+      <div className="comment-saved-header">
+        <span className="comment-avatar">JR</span>
+        <span className="comment-author">You</span>
+        <span className="comment-time">
+          · {relativeTimeFromMs(comment.createdAt)} ago
+        </span>
+        <span className="comment-saved-spacer" />
+        <CommentContext onReveal={onReveal} active={isRevealed} />
+      </div>
       <div className="comment-body">{comment.body}</div>
       <div className="comment-meta">
-        {comment.sent && <span className="comment-sent">sent ✓</span>}
         <button className="comment-link" onClick={() => setEditing(true)}>
-          edit
+          Edit
         </button>
         <button className="comment-link" onClick={onDelete}>
-          delete
+          Delete
         </button>
+        <span className="comment-saved-spacer" />
+        {comment.sent && <span className="comment-sent">sent ✓</span>}
       </div>
     </div>
   );

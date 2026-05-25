@@ -1416,6 +1416,12 @@ code {
   cursor: default;
 }
 
+/* When the chip sits inside a header row, drop the standalone margin/align. */
+.comment-saved-header .comment-loc-chip {
+  align-self: center;
+  margin: 0;
+}
+
 /* Captured code, shown only for detached comments (their lines aren't visible). */
 .comment-context-snippet {
   margin: 0;
@@ -1475,29 +1481,69 @@ code {
   font-size: 12px;
 }
 
+/* Inline saved comment card (InlineNoteV1). Header is avatar + author +
+   time-ago on the left, range chip on the right; body in the middle;
+   actions in a footer. */
 .comment-saved {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px;
+  gap: 6px;
+  padding: 10px 12px;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent);
-  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
   margin: 4px 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.comment-saved-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.comment-saved-spacer {
+  flex: 1;
+}
+
+.comment-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: #7c3aed;
+}
+
+.comment-author {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
+.comment-time {
+  font-size: 10.5px;
+  color: var(--fg-muted);
 }
 
 .comment-body {
-  font-size: 12.5px;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--fg);
   white-space: pre-wrap;
   word-break: break-word;
+  margin-bottom: 2px;
 }
 
 .comment-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-size: 11px;
   color: var(--fg-muted);
 }
@@ -1508,9 +1554,12 @@ code {
 }
 
 .comment-link {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  font-size: 11px;
   color: var(--fg-muted);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .comment-link:hover {

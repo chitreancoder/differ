@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useCommits } from "../state/commits";
 import { useStore } from "../state/store";
 import { isWorkingTree, type Commit, type FileEntry } from "../types";
+import { relativeTimeFromSeconds } from "../utils/time";
 
 const TOOLTIP_DELAY_MS = 200;
 const TOOLTIP_WIDTH = 400;
@@ -89,24 +90,6 @@ function initials(name: string): string {
   const parts = cleaned.split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-function relativeTime(epochSeconds: number): string {
-  const seconds = Math.max(
-    0,
-    Math.floor(Date.now() / 1000 - epochSeconds),
-  );
-  if (seconds < 60) return `${seconds}s`;
-  const m = Math.floor(seconds / 60);
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 14) return `${d}d`;
-  const w = Math.floor(d / 7);
-  if (w < 8) return `${w}w`;
-  const mo = Math.floor(d / 30);
-  return `${mo}mo`;
 }
 
 function formatNumber(n: number): string {
@@ -313,7 +296,7 @@ function CommitTooltip({
         <span className="commit-tooltip-author">{commit.authorName}</span>
         <span className="commit-tooltip-spacer" />
         <span className="commit-tooltip-time">
-          {relativeTime(commit.timestamp)}
+          {relativeTimeFromSeconds(commit.timestamp)}
         </span>
       </div>
       <div className="commit-tooltip-subject">{commit.summary}</div>
