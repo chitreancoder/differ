@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { useEscapeKey } from "@/hooks";
+import "./Modal.css";
 
 type Props = {
   onClose: () => void;

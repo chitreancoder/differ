@@ -8,6 +8,7 @@ import {
 import { createPortal } from "react-dom";
 import { useEscapeKey } from "@/hooks";
 import { computePopoverPlacement } from "@/hooks/usePopoverPlacement";
+import "./Popover.css";
 
 type Props = {
   open: boolean;

@@ -13,7 +13,6 @@ import { loadPersisted, startPersistSubscription } from "@/state/persist";
 import { addRepoByPath } from "@/state/repoActions";
 import { autoFetchOnce, refreshAll } from "@/state/refresh";
 import { useStore } from "@/state/store";
-import "@/App.css";
 
 // Lazy: only mount when first opened. cmdk + modal machinery isn't in
 // the initial bundle for users who never trigger them.

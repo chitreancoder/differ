@@ -3,6 +3,7 @@ import { useStore } from "@/state/store";
 import { useRepoSelection } from "@/state/selection";
 import { useDiffFiles, visibleFilePaths } from "@/state/diff";
 import { useFullDiff } from "@/state/fullDiff";
+import "./MainPanel.css";
 import { fetchRemote, refreshAll } from "@/state/refresh";
 import { useEffectiveTheme } from "@/theme";
 import { FileTree } from "@/components/FileTree";

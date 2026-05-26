@@ -3,6 +3,7 @@ import { Command } from "cmdk";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useStore } from "@/state/store";
 import { buildScope } from "@/state/selection";
+import "./CommandPalette.css";
 import { useAutoFocus, useEscapeKey } from "@/hooks";
 import { fetchRemote, refreshAll } from "@/state/refresh";
 import { pickAndAddRepo } from "@/state/repoActions";

@@ -3,6 +3,7 @@ import { fetchRemote } from "@/state/refresh";
 import { isWorkingTree } from "@/types";
 import { CommitTimeline } from "@/components/CommitTimeline";
 import { SettingsPanel } from "@/components/SettingsPanel";
+import "./TopBar.css";
 
 export function TopBar() {
   const activeRepoPath = useStore((s) => s.activeRepoPath);

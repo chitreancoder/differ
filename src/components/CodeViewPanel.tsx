@@ -11,6 +11,7 @@ import {
   WorkerPoolContextProvider,
   type CodeViewHandle,
 } from "@pierre/diffs/react";
+import "./CodeViewPanel.css";
 import {
   parsePatchFiles,
   type CodeViewItem,

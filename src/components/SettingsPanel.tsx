@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { useStore } from "@/state/store";
 import { Popover } from "@/components/Popover";
 import type { ThemePreference } from "@/types";
+import "./SettingsPanel.css";
 
 const THEME_CHOICES: { value: ThemePreference; label: string }[] = [
   { value: "system", label: "Auto" },

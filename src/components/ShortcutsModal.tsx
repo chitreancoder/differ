@@ -1,4 +1,5 @@
 import { useStore } from "@/state/store";
+import "./ShortcutsModal.css";
 
 const GROUPS: Array<[string, Array<[string, string]>]> = [
   [

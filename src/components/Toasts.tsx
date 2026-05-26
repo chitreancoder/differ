@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useStore } from "@/state/store";
+import "./Toasts.css";
 
 const AUTO_DISMISS_MS = 5000;
 

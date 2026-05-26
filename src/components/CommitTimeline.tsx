@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useCommits } from "@/state/commits";
+import "./CommitTimeline.css";
 import {
   fetchCommitStats,
   peekCommitStats,

@@ -1,0 +1,97 @@
+.welcome-modal {
+  width: 520px;
+  max-width: 92vw;
+  padding: 18px 20px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.36);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.welcome-modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.welcome-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.welcome-field input[type="text"] {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.welcome-field input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.welcome-dest {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.welcome-dest-pick {
+  flex-shrink: 0;
+}
+
+.welcome-dest-path {
+  font-size: 12px;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.welcome-dest-path code {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.welcome-modal-progress {
+  padding: 8px 10px;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.welcome-modal-error {
+  font-size: 12px;
+  color: var(--deleted);
+  background: color-mix(in srgb, var(--deleted) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--deleted) 30%, transparent);
+  padding: 8px 10px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.welcome-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}

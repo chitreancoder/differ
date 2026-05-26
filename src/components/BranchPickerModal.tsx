@@ -3,6 +3,7 @@ import { Modal } from "@/components/Modal";
 import { useBranches } from "@/state/branches";
 import { useStore } from "@/state/store";
 import type { Branch } from "@/types";
+import "./BranchPickerModal.css";
 import { WORKING_TREE_REF } from "@/types";
 
 type Props = {

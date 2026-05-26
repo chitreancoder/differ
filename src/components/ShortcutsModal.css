@@ -1,0 +1,57 @@
+.shortcuts-modal {
+  width: 460px;
+  max-width: 92vw;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  padding: 20px 24px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.shortcuts-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--fg);
+}
+
+.shortcuts-group {
+  margin-bottom: 14px;
+}
+
+.shortcuts-group:last-child {
+  margin-bottom: 0;
+}
+
+.shortcuts-group-title {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12.5px;
+}
+
+.shortcuts-label {
+  flex: 1;
+  color: var(--fg);
+}
+
+.shortcuts-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.shortcuts-keys kbd {
+  font-size: 11px;
+}

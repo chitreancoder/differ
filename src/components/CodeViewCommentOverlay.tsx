@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReviewComment } from "@/types";
 import { relativeTimeFromMs } from "@/utils/time";
+import "./CodeViewCommentOverlay.css";
 
 /** Visual chrome for review comments inside Pierre's CodeView. All
  *  behavior is driven via callback props — no store/Pierre coupling. */

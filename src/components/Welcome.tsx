@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import { pickAndAddRepo } from "@/state/repoActions";
 import iconUrl from "@/assets/icon.png";
+import "./Welcome.css";
 
 // Lazy — pulls in @tauri-apps/plugin-dialog + listen.
 const CloneModal = lazy(() => import("@/components/CloneModal"));

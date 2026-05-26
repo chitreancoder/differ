@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { FileEntry, FileStatus } from "@/types";
+import "./FileTree.css";
 import {
   buildTree,
   flattenTree,

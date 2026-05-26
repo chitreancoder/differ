@@ -1,0 +1,39 @@
+.codeview {
+  height: 100%;
+  overflow-y: auto;
+  /* Tauri's macOS WKWebView repaints position:sticky out of sync with overflow
+     scrolling, so the sticky file header flickers / bleeds code text. Promoting
+     the scroller to its own compositor layer makes sticky update atomically. */
+  transform: translateZ(0);
+}
+
+.codeview-wrap {
+  position: relative;
+}
+
+.codeview-wrap.comment-mode {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.comment-add-fab {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+.comment-add-fab:hover {
+  filter: brightness(1.08);
+}

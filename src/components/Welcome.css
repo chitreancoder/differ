@@ -1,0 +1,76 @@
+.welcome {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.welcome-card {
+  max-width: 480px;
+  padding: 28px 32px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.welcome-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.25));
+}
+
+.welcome-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.welcome-tagline {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--fg-muted);
+  max-width: 36ch;
+}
+
+.welcome-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.welcome-primary {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+}
+
+.welcome-drop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: var(--fg-muted);
+  margin-bottom: 16px;
+}
+
+.welcome-hints {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+
+.welcome-hints kbd {
+  margin-right: 4px;
+}

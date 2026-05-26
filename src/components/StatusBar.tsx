@@ -2,6 +2,7 @@ import { useStore } from "@/state/store";
 import { useRepoSelection } from "@/state/selection";
 import { exportForClaude } from "@/state/review";
 import type { ReviewComment } from "@/types";
+import "./StatusBar.css";
 
 // Stable empty reference: returning a fresh `[]` from a useStore selector makes
 // useSyncExternalStore see a new snapshot every render → infinite update loop.
