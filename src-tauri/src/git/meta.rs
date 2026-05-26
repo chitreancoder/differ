@@ -187,6 +187,15 @@ fn ref_resolves(repo: &Repository, name: &str) -> bool {
     repo.revparse_single(name).is_ok()
 }
 
+/// If `name` is a local branch with an upstream tracking ref, return the
+/// upstream's short name (`origin/main`). Returns None for remote-only refs,
+/// detached SHAs, or branches without a configured upstream.
+fn local_branch_upstream(repo: &Repository, name: &str) -> Option<String> {
+    let branch = repo.find_branch(name, BranchType::Local).ok()?;
+    let upstream = branch.upstream().ok()?;
+    upstream.name().ok().flatten().map(String::from)
+}
+
 /// Per-repo refs validation in one round-trip. Returns whether each provided
 /// ref still resolves. Used at hydration to detect stale persisted selections.
 #[tauri::command]
@@ -197,10 +206,14 @@ pub fn validate_refs(
     commit: Option<String>,
 ) -> Result<RefValidation, String> {
     let repo = open(&path)?;
+    let base_upstream = base
+        .as_deref()
+        .and_then(|b| local_branch_upstream(&repo, b));
     Ok(RefValidation {
         base_valid: base.map(|b| ref_resolves(&repo, &b)),
         compare_valid: compare.map(|c| ref_resolves(&repo, &c)),
         commit_valid: commit.map(|sha| repo.revparse_single(&sha).is_ok()),
+        base_upstream,
     })
 }
 
@@ -209,14 +222,21 @@ fn resolve_default_branch(repo: &Repository) -> Option<String> {
         if let Some(target) = reference.symbolic_target() {
             return target
                 .strip_prefix("refs/remotes/origin/")
-                .map(String::from);
+                .map(|name| format!("origin/{}", name));
         }
     }
     for candidate in ["main", "master", "trunk", "develop"] {
-        if repo
-            .find_branch(candidate, BranchType::Local)
-            .is_ok()
-        {
+        // Prefer the upstream tracking ref over the local branch — local
+        // `main` drifts behind `origin/main` between fetches, which silently
+        // bloats the cumulative diff vs. what GitHub shows for the same PR.
+        if let Ok(branch) = repo.find_branch(candidate, BranchType::Local) {
+            if let Some(name) = branch
+                .upstream()
+                .ok()
+                .and_then(|u| u.name().ok().flatten().map(String::from))
+            {
+                return Some(name);
+            }
             return Some(candidate.to_string());
         }
         let remote_name = format!("origin/{}", candidate);
@@ -315,7 +335,9 @@ pub fn list_commits(
     let mut walk = repo
         .revwalk()
         .map_err(|e| format!("revwalk: {}", e.message()))?;
-    walk.set_sorting(Sort::TOPOLOGICAL | Sort::REVERSE)
+    // Topological order without REVERSE puts the newest commit first — the
+    // timeline strip renders left-to-right, so newest-on-left lands naturally.
+    walk.set_sorting(Sort::TOPOLOGICAL)
         .map_err(|e| format!("sort: {}", e.message()))?;
     walk.push(compare_oid)
         .map_err(|e| format!("push compare: {}", e.message()))?;

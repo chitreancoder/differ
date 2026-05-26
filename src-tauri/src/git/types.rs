@@ -29,6 +29,10 @@ pub struct RefValidation {
     pub base_valid: Option<bool>,
     pub compare_valid: Option<bool>,
     pub commit_valid: Option<bool>,
+    /// When `base` is a local branch with an upstream tracking ref, the
+    /// upstream's short name (e.g. `origin/main`). The frontend uses this to
+    /// migrate stale persisted bases that have drifted behind the remote.
+    pub base_upstream: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

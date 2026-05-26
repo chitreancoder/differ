@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
 import { MainPanel } from "@/components/MainPanel";
@@ -40,6 +42,42 @@ function useAutoFetchOnRepoSwitch() {
     if (!repo || repo.missing) return;
     autoFetchOnce(activeRepoPath);
   }, [activeRepoPath, repos]);
+}
+
+/** Keep a notify-backed watcher running for every opened repo. Emits a
+ *  `repo-changed` event on HEAD/refs changes; we refresh only when the event
+ *  is for the active repo so background repos don't yank the diff out from
+ *  under the user. */
+function useRepoWatchers() {
+  const repos = useStore((s) => s.repos);
+  useEffect(() => {
+    const watched = new Set<string>();
+    for (const repo of repos) {
+      if (repo.missing) continue;
+      invoke("watch_repo", { path: repo.path }).catch(() => {
+        /* watcher failure is non-fatal — fall back to manual refresh. */
+      });
+      watched.add(repo.path);
+    }
+    return () => {
+      for (const path of watched) {
+        invoke("unwatch_repo", { path }).catch(() => {});
+      }
+    };
+  }, [repos]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | null = null;
+    (async () => {
+      unlisten = await listen<string>("repo-changed", (event) => {
+        const active = useStore.getState().activeRepoPath;
+        if (event.payload === active) refreshAll();
+      });
+    })();
+    return () => {
+      unlisten?.();
+    };
+  }, []);
 }
 
 function useFocusRefresh() {
@@ -83,6 +121,7 @@ function App() {
   useEffectiveTheme();
   useBranchDefaults();
   useAutoFetchOnRepoSwitch();
+  useRepoWatchers();
   useFocusRefresh();
   useShortcuts();
   const [ready, setReady] = useState(false);

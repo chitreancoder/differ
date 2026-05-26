@@ -1,5 +1,6 @@
 mod git;
 mod review;
+mod watcher;
 
 use git::{
     clone_repo, diff_all, diff_commit_all, diff_commit_file, diff_commit_name_status, diff_file,
@@ -8,6 +9,7 @@ use git::{
     repo_fetch, validate_refs, validate_repo,
 };
 use review::{claude_command_status, setup_claude_command, write_review_file};
+use watcher::{unwatch_repo, watch_repo, WatcherRegistry};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,6 +17,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .manage(WatcherRegistry::default())
         .invoke_handler(tauri::generate_handler![
             validate_repo,
             validate_refs,
@@ -36,6 +39,8 @@ pub fn run() {
             write_review_file,
             setup_claude_command,
             claude_command_status,
+            watch_repo,
+            unwatch_repo,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

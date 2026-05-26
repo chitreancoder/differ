@@ -64,6 +64,7 @@ export async function loadPersisted(): Promise<void> {
   // ref set — a branch deleted between sessions otherwise surfaces as a
   // confusing "Diff failed" toast much later.
   const staleByRepo = new Map<string, string[]>();
+  const migratedBaseByRepo = new Map<string, { from: string; to: string }>();
   await Promise.all(
     repos
       .filter((r) => !r.missing)
@@ -76,6 +77,7 @@ export async function loadPersisted(): Promise<void> {
             baseValid: boolean | null;
             compareValid: boolean | null;
             commitValid: boolean | null;
+            baseUpstream: string | null;
           }>("validate_refs", {
             path: r.path,
             base: b ?? null,
@@ -86,6 +88,15 @@ export async function loadPersisted(): Promise<void> {
           if (b && result.baseValid === false) {
             stale.push(b);
             delete base[r.path];
+          } else if (b && result.baseUpstream) {
+            // Local base has an upstream → swap to it so the cumulative diff
+            // matches what the remote PR view shows. Without this, a stale
+            // local `main` produces wildly different file counts.
+            base[r.path] = result.baseUpstream;
+            migratedBaseByRepo.set(r.name, {
+              from: b,
+              to: result.baseUpstream,
+            });
           }
           if (c && result.compareValid === false) {
             stale.push(c);
@@ -120,6 +131,11 @@ export async function loadPersisted(): Promise<void> {
     useStore
       .getState()
       .pushToast(`${noun} ${list} no longer exist in ${repoName}`, "info");
+  }
+  for (const [repoName, { from, to }] of migratedBaseByRepo) {
+    useStore
+      .getState()
+      .pushToast(`Base switched from '${from}' to '${to}' in ${repoName}`, "info");
   }
 }
 
